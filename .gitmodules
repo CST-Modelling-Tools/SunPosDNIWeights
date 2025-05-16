@@ -1,0 +1,3 @@
+[submodule "external/sunpos"]
+	path = external/sunpos
+	url = https://github.com/CST-Modelling-Tools/Updated-PSA-sun-position-algorithm.git
