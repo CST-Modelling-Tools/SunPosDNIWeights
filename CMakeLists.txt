@@ -2,9 +2,20 @@ cmake_minimum_required(VERSION 3.15)
 project(SunPositionDNIWeights)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Include paths
 include_directories(include)
+include_directories(external/sunpos)
 
-file(GLOB SOURCES "src/*.cpp")
+# Source files from src/ and external/sunpos/
+file(GLOB SRC_FILES
+    "src/*.cpp"
+    "external/sunpos/sunpos.cpp"
+)
 
-add_executable(SunPositionDNIWeights main.cpp ${SOURCES})
+# Executable target
+add_executable(SunPositionDNIWeights
+    main.cpp
+    ${SRC_FILES}
+)
