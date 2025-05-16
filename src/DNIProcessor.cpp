@@ -2,26 +2,15 @@
 
 #include <fstream>
 #include <sstream>
-#include <iomanip>
 #include <iostream>
 #include <string>
-#include <stdexcept>
-
-// Cross-platform timegm wrapper
-inline std::time_t timegm_utc(std::tm* tm) {
-#ifdef _WIN32
-    return _mkgmtime(tm);  // Windows: UTC version of mktime
-#else
-    return timegm(tm);     // POSIX: UTC version of mktime
-#endif
-}
 
 std::vector<TimedDNI> readDNIFile(const std::string& filepath) {
     std::vector<TimedDNI> data;
-
     std::ifstream file(filepath);
+
     if (!file.is_open()) {
-        std::cerr << "Error: Could not open file: " << filepath << std::endl;
+        std::cerr << "Error: Could not open DNI file: " << filepath << std::endl;
         return data;
     }
 
@@ -33,35 +22,30 @@ std::vector<TimedDNI> readDNIFile(const std::string& filepath) {
         if (line.empty()) continue;
 
         std::istringstream ss(line);
-        std::string timestamp_str, dni_str;
+        std::string year_str, month_str, day_str, hour_str, minute_str, dni_str;
 
-        if (!std::getline(ss, timestamp_str, ',')) {
-            std::cerr << "Warning: Invalid line " << line_number << ": missing timestamp.\n";
-            continue;
-        }
-
-        if (!std::getline(ss, dni_str)) {
-            std::cerr << "Warning: Invalid line " << line_number << ": missing DNI.\n";
-            continue;
-        }
-
-        std::tm tm = {};
-        std::istringstream ts(timestamp_str);
-        ts >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
-        if (ts.fail()) {
-            std::cerr << "Warning: Failed to parse time at line " << line_number << ": " << timestamp_str << "\n";
-            continue;
-        }
-
-        // Convert tm to UTC-based time_point
-        std::time_t utc_time = timegm_utc(&tm);
-        std::chrono::system_clock::time_point tp = std::chrono::system_clock::from_time_t(utc_time);
+        // Expected CSV format: Year,Month,Day,Hour,Minute,DNI
+        if (!std::getline(ss, year_str, ',')) continue;
+        if (!std::getline(ss, month_str, ',')) continue;
+        if (!std::getline(ss, day_str, ',')) continue;
+        if (!std::getline(ss, hour_str, ',')) continue;
+        if (!std::getline(ss, minute_str, ',')) continue;
+        if (!std::getline(ss, dni_str)) continue;
 
         try {
+            cTime ct;
+            ct.iYear    = std::stoi(year_str);
+            ct.iMonth   = std::stoi(month_str);
+            ct.iDay     = std::stoi(day_str);
+            ct.dHours   = static_cast<double>(std::stoi(hour_str));
+            ct.dMinutes = static_cast<double>(std::stoi(minute_str));
+            ct.dSeconds = 0.0;
+
             double dni = std::stod(dni_str);
-            data.push_back({tp, dni});
-        } catch (const std::invalid_argument&) {
-            std::cerr << "Warning: Invalid DNI at line " << line_number << ": " << dni_str << "\n";
+            data.push_back({ct, dni});
+        }
+        catch (const std::exception& e) {
+            std::cerr << "Warning: Invalid data at line " << line_number << ": " << e.what() << "\n";
         }
     }
 

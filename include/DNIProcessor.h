@@ -4,8 +4,10 @@
 #include <string>
 #include <chrono>
 
+#include "sunpos.h"
+
 struct TimedDNI {
-    std::chrono::system_clock::time_point time;
+    cTime time;
     double dni;
 };
 
