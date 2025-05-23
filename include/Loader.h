@@ -6,9 +6,22 @@
 #include <sstream>
 #include <stdexcept>
 #include <Eigen/Dense>
+#include <numbers>
 
-// Reads lines like: x, y, z, efficiency
-inline void loadSampledEfficiencies(
+// Converts azimuth/elevation (in degrees) to ENZ unit vector
+inline Eigen::Vector3d AzElToUnitVector(double azimuth_deg, double elevation_deg) {
+    double az = azimuth_deg * std::numbers::pi / 180.0;
+    double el = elevation_deg * std::numbers::pi / 180.0;
+
+    double x = std::sin(az) * std::cos(el); // East
+    double y = std::cos(az) * std::cos(el); // North
+    double z = std::sin(el);                // Zenith
+
+    return Eigen::Vector3d(x, y, z);
+}
+
+// Reads lines like: azimuth, elevation, efficiency
+inline void loadAzElEfficiencies(
     const std::string& file,
     std::vector<Eigen::Vector3d>& directions,
     std::vector<double>& efficiencies)
@@ -19,12 +32,12 @@ inline void loadSampledEfficiencies(
     std::string line;
     while (std::getline(in, line)) {
         std::istringstream ss(line);
-        double x, y, z, eta;
+        double azimuth, elevation, eta;
         char comma;
-        if (!(ss >> x >> comma >> y >> comma >> z >> comma >> eta)) {
+        if (!(ss >> azimuth >> comma >> elevation >> comma >> eta)) {
             throw std::runtime_error("Malformed line: " + line);
         }
-        directions.emplace_back(x, y, z);
+        directions.push_back(AzElToUnitVector(azimuth, elevation));
         efficiencies.push_back(eta);
     }
 
