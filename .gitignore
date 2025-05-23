@@ -1,37 +1,29 @@
+# CMake build artifacts
 /build/
-/output/
-/.vscode/
+/CMakeFiles/
+/CMakeCache.txt
+/Makefile
+/install_manifest.txt
+/*.cmake
 
-# Prerequisites
-*.d
+# Editor files
+*.swp
+*.swo
+.vscode/
+.idea/
 
-# Compiled Object files
-*.slo
-*.lo
+# MacOS and Linux system files
+.DS_Store
+Thumbs.db
+
+# Compiled binaries and intermediate object files
 *.o
 *.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
 *.so
-*.dylib
 *.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
+*.exe
 *.a
 *.lib
 
-# Executables
-*.csv
-*.exe
-*.out
-*.app
+# Output data
+data/sample_directions_tonatiuh.csv

@@ -1,0 +1,2 @@
+add_executable(GenerateSamplingDirections main.cpp)
+target_link_libraries(GenerateSamplingDirections PRIVATE polyharmonic_core)

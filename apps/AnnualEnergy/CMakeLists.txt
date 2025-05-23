@@ -1,0 +1,2 @@
+add_executable(PolyharmonicEnergy main.cpp)
+target_link_libraries(PolyharmonicEnergy PRIVATE polyharmonic_core)
