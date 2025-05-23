@@ -2,7 +2,7 @@ add_library(polyharmonic_core
     Interpolator.cpp
     DNISeries.cpp
     SunPosition.cpp
-    AnnualEnergyCalculator.cpp
+    AnnualEnergyFromPrecomputedData.cpp
 )
 
 target_include_directories(polyharmonic_core

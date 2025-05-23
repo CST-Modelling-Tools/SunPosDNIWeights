@@ -3,15 +3,15 @@
 
 #include <vector>
 #include <string>
-#include <chrono>
+#include "sunpos.h"  // for cTime
 
 class DNISeries {
 public:
     explicit DNISeries(const std::string& path);
-    std::vector<std::pair<std::chrono::system_clock::time_point, double>> getTimeSeries() const;
+    std::vector<std::pair<cTime, double>> getTimeSeries() const;
 
 private:
-    std::vector<std::pair<std::chrono::system_clock::time_point, double>> data;
+    std::vector<std::pair<cTime, double>> data;
 };
 
 #endif // DNI_SERIES_H

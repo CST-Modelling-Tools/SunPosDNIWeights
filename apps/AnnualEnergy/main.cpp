@@ -1,22 +1,21 @@
-#include "Interpolator.h"
-#include "DNISeries.h"
-#include "AnnualEnergyCalculator.h"
-#include "Loader.h"
+#include "AnnualEnergyFromPrecomputedData.h"
 #include <iostream>
-#include <numbers>
+#include <limits>
 
 int main() {
-    std::vector<Eigen::Vector3d> sampleDirs;
-    std::vector<double> efficiencies;
-    loadSampledEfficiencies("data/sample_directions_with_efficiency.csv", sampleDirs, efficiencies);
-    
-    auto Q = [](const Eigen::Vector3d& r) { return 1.0 + r.z(); };
-    Interpolator interpolator(sampleDirs, efficiencies, 6, Q);
+    const std::string inputFile = "C:/Users/manue_6t240gh/Dropbox/OpenSource/SunPosDNIWeights/data/directions_with_weights_and_efficiency_tarancon_spain.csv";
 
-    DNISeries dniSeries("data/DNI_Seville_2016.csv");
-    AnnualEnergyCalculator calculator(interpolator, dniSeries, 37.4117, -6.00583);
+    try {
+        AnnualEnergyFromPrecomputedData calculator(inputFile);
+        double energyMWh = calculator.computeAnnualEnergyMWh();
 
-    double energy = calculator.computeAnnualEnergy();
-    std::cout << "Estimated annual energy (relative units): " << energy << std::endl;
+        std::cout << "Estimated annual energy: " << energyMWh << " MWh" << std::endl;
+    } catch (const std::exception& ex) {
+        std::cerr << "Error: " << ex.what() << std::endl;
+        return 1;
+    }
+
+    std::cout << "Press Enter to exit...";
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     return 0;
 }

@@ -1,14 +1,14 @@
-#ifndef SUNPOSITION_H
-#define SUNPOSITION_H
+#ifndef SUN_POSITION_H
+#define SUN_POSITION_H
 
-#include "sunpos.h"
+#include "sunpos.h"        // cTime, cLocation, cSunCoordinates
 #include <Eigen/Dense>
-#include <chrono>
 
 class SunPosition {
 public:
-    static Eigen::Vector3d getSunDirection(const std::chrono::system_clock::time_point& utc,
-                                           double latitude, double longitude);
+    static Eigen::Vector3d getSunDirection(const cTime& utc,
+                                           double latitude,
+                                           double longitude);
 };
 
-#endif // SUNPOSITION_H
+#endif // SUN_POSITION_H

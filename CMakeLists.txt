@@ -14,4 +14,4 @@ add_subdirectory(external/sunpos)
 # Add internal libraries and applications
 add_subdirectory(src)
 add_subdirectory(apps/AnnualEnergy)
-add_subdirectory(tools/GenerateSamplingDirections)
+add_subdirectory(tools/GenerateSamplingDirectionsAndWeights)

@@ -14,6 +14,7 @@ public:
 
     double interpolate(const Eigen::Vector3d& sunDir) const;
     std::vector<std::function<double(const Eigen::Vector3d)>> getLocalizedKernels() const;
+    const std::vector<double>& getAmplitudes() const { return amplitudes; }
 
 private:
     int order;
