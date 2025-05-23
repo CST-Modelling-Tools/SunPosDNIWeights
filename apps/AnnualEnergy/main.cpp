@@ -6,9 +6,10 @@
 #include <numbers>
 
 int main() {
-    auto sampleDirs = loadSamplingDirections("data/sample_directions.csv");
-    auto efficiencies = loadEfficiencies("data/sample_efficiencies.csv");
-
+    std::vector<Eigen::Vector3d> sampleDirs;
+    std::vector<double> efficiencies;
+    loadSampledEfficiencies("data/sample_directions_with_efficiency.csv", sampleDirs, efficiencies);
+    
     auto Q = [](const Eigen::Vector3d& r) { return 1.0 + r.z(); };
     Interpolator interpolator(sampleDirs, efficiencies, 6, Q);
 
