@@ -4,28 +4,32 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <stdexcept>
 #include <Eigen/Dense>
 
-inline std::vector<Eigen::Vector3d> loadSamplingDirections(const std::string& file) {
+// Reads lines like: x, y, z, efficiency
+inline void loadSampledEfficiencies(
+    const std::string& file,
+    std::vector<Eigen::Vector3d>& directions,
+    std::vector<double>& efficiencies)
+{
     std::ifstream in(file);
-    std::vector<Eigen::Vector3d> dirs;
+    if (!in) throw std::runtime_error("Failed to open file: " + file);
+
     std::string line;
     while (std::getline(in, line)) {
         std::istringstream ss(line);
-        double x, y, z;
+        double x, y, z, eta;
         char comma;
-        ss >> x >> comma >> y >> comma >> z;
-        dirs.emplace_back(x, y, z);
+        if (!(ss >> x >> comma >> y >> comma >> z >> comma >> eta)) {
+            throw std::runtime_error("Malformed line: " + line);
+        }
+        directions.emplace_back(x, y, z);
+        efficiencies.push_back(eta);
     }
-    return dirs;
-}
 
-inline std::vector<double> loadEfficiencies(const std::string& file) {
-    std::ifstream in(file);
-    std::vector<double> effs;
-    double e;
-    while (in >> e) effs.push_back(e);
-    return effs;
+    if (directions.size() != efficiencies.size())
+        throw std::runtime_error("Mismatch between directions and efficiencies");
 }
 
 #endif // LOADER_H

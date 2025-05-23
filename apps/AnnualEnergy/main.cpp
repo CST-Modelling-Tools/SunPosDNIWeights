@@ -1,4 +1,3 @@
-// src/main.cpp
 #include "Interpolator.h"
 #include "DNISeries.h"
 #include "AnnualEnergyCalculator.h"
