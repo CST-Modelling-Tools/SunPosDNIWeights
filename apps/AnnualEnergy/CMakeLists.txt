@@ -1,2 +1,2 @@
-add_executable(PolyharmonicEnergy main.cpp)
-target_link_libraries(PolyharmonicEnergy PRIVATE polyharmonic_core)
+add_executable(AnnualEnergy main.cpp)
+target_link_libraries(AnnualEnergy PRIVATE polyharmonic_core)

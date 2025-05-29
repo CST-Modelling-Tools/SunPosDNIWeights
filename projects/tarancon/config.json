@@ -1,0 +1,32 @@
+{
+  "project_name": "tarancon",
+
+  "location": {
+    "latitude_deg": 39.872,
+    "longitude_deg": -3.01
+  },
+
+  "dni": {
+    "file": "data/dni_tarancon_spain.csv"
+  },
+
+  "scripts": {
+    "tonatiuh_script": "scripts/simulate_layout.tnhpps"
+  },
+
+  "folders": {
+    "layouts": "layouts",
+    "results": "results",
+    "data": "data"
+  },
+
+  "initial_layout": "layout_initial.csv",
+  "sampling_file": "directions_with_weights_tarancon_spain.csv",
+  "result_file_prefix": "directions_with_weights_and_efficiency_tarancon_spain",
+
+  "executables": {
+    "sampling_exe": "../../build/tools/GenerateSamplingDirectionsAndWeights/Release/GenerateSamplingDirectionsAndWeights.exe",
+    "tonatiuh_exe": "C:/Users/manue_6t240gh/Tonatiuh++/bin/Tonatiuh-Application.exe",
+    "energy_exe": "../../build/apps/AnnualEnergy/Release/AnnualEnergy.exe"
+  }
+}

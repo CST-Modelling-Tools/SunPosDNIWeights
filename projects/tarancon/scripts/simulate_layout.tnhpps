@@ -1,0 +1,260 @@
+const DEGREE = Math.PI / 180;
+const MIRROR_WIDTH = 4.06;
+const MIRROR_HEIGHT = 4.06;
+
+const RECEIVER_Z = 35.0;
+const V_REC = `0 0 ${RECEIVER_Z}`;
+const RECEIVER_RADIUS = 0.865;
+const RECEIVER_ANGLE = 27.0;
+const RECEIVER_ANGLE_RAD = RECEIVER_ANGLE * DEGREE;
+
+//const RECEIVER_RADIUS = 1.000;
+const TOWER_HEIGHT = RECEIVER_Z - RECEIVER_RADIUS * Math.cos(RECEIVER_ANGLE_RAD);
+const TOWER_SIDE = 4.0;
+const rays = 5000000;
+nMax = 0; // Number of heliostats in the field. Updated in generateHeliostatFieldFromCSV
+
+function createNode(parent, name) {
+    try {
+        const node = parent.createNode(name);
+        if (!node) throw new Error(`Failed to create node: ${name}`);
+        return node;
+    } catch (error) {
+        print(`Error creating node: ${error.message}`);
+        return null;
+    }
+}
+
+function insertShape(node, surfaceType, profileType) {
+    try {
+        const shape = node.createShape();
+        const surface = shape.insertSurface(surfaceType);
+        const profile = shape.insertProfile(profileType);
+        return { shape, surface, profile };
+    } catch (error) {
+        print(`Error inserting shape: ${error.message}`);
+        return null;
+    }
+}
+
+function applyMaterial(shape, parameters) {
+    const materialPart = shape.getPart("material");
+    if (!materialPart) {
+        print("Warning: Material part not found for shape.");
+        return;
+    }
+
+    if (parameters.ambientColor) {
+        materialPart.setParameter("ambientColor", parameters.ambientColor);
+    }
+    if (parameters.diffuseColor) {
+        materialPart.setParameter("diffuseColor", parameters.diffuseColor);
+    }
+    if (parameters.specularColor) {
+        materialPart.setParameter("specularColor", parameters.specularColor);
+    }
+    if (parameters.shininess) {
+        materialPart.setParameter("shininess", parameters.shininess);
+    }
+}
+
+function makeHeliostat(parent, name, position, aiming, focus) {
+    try {
+        const heliostatNode = createNode(parent, name);
+        heliostatNode.setParameter("translation", `${position[0]} ${position[1]} 0`);
+
+        const tracker = heliostatNode.createTracker();
+        const armature = tracker.insertArmature("two-axes");
+        armature.setParameter("primaryShift", `0 0 ${position[2]}`);
+        armature.setParameter("primaryAxis", "0 0 1");
+        armature.setParameter("primaryAngles", "-360 360");
+        armature.setParameter("secondaryShift", "0 0 0");
+        armature.setParameter("secondaryAxis", "1 0 0");
+        armature.setParameter("secondaryAngles", "-90 90");
+        armature.setParameter("facetShift", "0 0 0");
+        armature.setParameter("facetNormal", "0 0 1");
+
+        tracker.getPart("target").setParameter("aimingPoint", aiming);
+
+        const facetNode = createNode(createNode(createNode(heliostatNode, "primary"), "secondary"), "facet");
+        facetNode.setParameter("translation", "0 0 0");
+
+        const facet = insertShape(facetNode, "Parabolic", "Box");
+        facet.surface.setParameter("fX", focus);
+        facet.surface.setParameter("fY", focus);
+        facet.profile.setParameter("uSize", MIRROR_WIDTH);
+        facet.profile.setParameter("vSize", MIRROR_HEIGHT);
+
+        const material = facet.shape.insertMaterial("Specular");
+        material.setParameter("reflectivity", "1.0");
+        material.setParameter("slope", "0.002");
+
+        applyMaterial(facet.shape, {
+            ambientColor: "0.65 0.72 0.79",
+            diffuseColor: "0.05 0.05 0.05",
+            specularColor: "0.3 0.25 0.2",
+            shininess: "0.5"
+        });
+
+        const pylonNode = createNode(heliostatNode, "pylon");
+        pylonNode.setParameter("scale", "0.2 0.2 1");
+
+        const pylon = insertShape(pylonNode, "Cylinder", "Rectangular");
+        pylon.profile.setParameter("uMin", 0.0);
+        pylon.profile.setParameter("uMax", "360d");
+        pylon.profile.setParameter("vMin", 0.0);
+        pylon.profile.setParameter("vMax", position[2] - 0.5);
+
+        pylon.shape.insertMaterial("Transparent");
+        applyMaterial(pylon.shape, {
+            ambientColor: "0.5 0.5 0.5",
+            diffuseColor: "0.3 0.3 0.3",
+            specularColor: "0.2 0.2 0.2",
+            shininess: "0.1"
+        });
+
+        print(`Heliostat ${name} created successfully.`);
+    } catch (error) {
+        print(`Error in makeHeliostat: ${error.message}`);
+    }
+}
+
+function generateHeliostatFieldFromCSV(parent, csvFilePath) {
+    try {
+        const file = new DataObject();
+        if (!file.read(csvFilePath)) throw new Error(`Failed to load: ${csvFilePath}`);
+
+        parent.setName("HeliostatField");
+        const nodeHeliostats = createNode(parent, "Heliostats");
+        nodeHeliostats.setParameter("translation", "0 0 0");
+
+        const rowCount = file.rows();
+		nMax = 0; // Reset counter
+
+        for (let i = 0; i < rowCount; i++) {
+            const row = file.array(i);
+            if (row.length < 5) continue;
+            const [label, x, y, z, focus] = [row[0], ...row.slice(1).map(parseFloat)];
+            if ([x, y, z, focus].some(Number.isNaN)) continue;
+            makeHeliostat(nodeHeliostats, label, [x, y, z], V_REC, focus);
+		   nMax++ // Count only valid heliostats
+        }
+        print(`Heliostat field successfully generated with ${nMax} heliostats.`);
+    } catch (error) {
+        print(`Error in generateHeliostatFieldFromCSV: ${error.message}`);
+    }
+}
+
+function makeReceiverGroup(parent, aiming) {
+    try {
+        parent.setName("ReceiverGroup");
+        parent.setParameter("translation", aiming);
+        parent.setParameter("rotation", `-1 0 0 ${RECEIVER_ANGLE}`);
+
+        const inputAperture = createNode(parent, "InputAperture");
+        inputAperture.setParameter("rotation", "0 0 1 180");
+
+        const apertureX = createNode(inputAperture, "InputApertureRotationX");
+        apertureX.setParameter("rotation", "1 0 0 90");
+
+        const { shape, profile } = insertShape(apertureX, "Planar", "Circular");
+        profile.setParameter("rMax", `${RECEIVER_RADIUS}`);
+
+        applyMaterial(shape, {
+            ambientColor: "0.9 0.4 0.5"
+        });
+
+        print("ReceiverGroup successfully created and configured.");
+    } catch (error) {
+        print(`Error in makeReceiverGroup: ${error.message}`);
+    }
+}
+
+function makeTower(parent)
+{
+	const yOffset = -(TOWER_SIDE / 2.0 + RECEIVER_RADIUS * Math.sin(RECEIVER_ANGLE_RAD));
+	parent.setName("Tower");
+	parent.setParameter("translation", `0 ${yOffset} ${TOWER_HEIGHT/2.0}`);
+	parent.setParameter("scale", `${TOWER_SIDE} ${TOWER_SIDE} ${TOWER_HEIGHT}`);
+    const towerShape = insertShape(parent, "Cube", "Box");
+}
+
+try {
+    tn.Clear();
+    print("Scene cleared.");
+
+    const receiver = new NodeObject();
+    makeReceiverGroup(receiver, V_REC);
+    tn.InsertScene(receiver);
+
+	const tower = new NodeObject();
+	makeTower(tower);
+	tn.InsertScene(tower);
+
+    const field = new NodeObject();
+    generateHeliostatFieldFromCSV(field, "../layouts/layout_initial.csv");
+    tn.InsertScene(field);
+
+    const scene = tn.getScene();
+    const camera = scene.getPart("world.camera");
+    camera.setParameter("position", "0 0 100");
+    camera.setParameter("rotation", "0 -90");
+
+    const sun = scene.getPart("world.sun");
+    sun.setParameter("shape", "Buie");
+    const sunPos = sun.getPart("position");
+    sunPos.setParameter("azimuth", 180);
+    sunPos.setParameter("elevation", 67);
+
+	const terrain = scene.getPart("world.terrain");
+	const grid = terrain.getPart("grid");
+	grid.setParameter("min", "-50 0 0");
+	grid.setParameter("max", "50 110 0");
+
+    print("Scene setup completed successfully.");
+
+	if (rays > 0) {
+    const inputFile = new DataObject();
+    const inputPath = "../results/directions_with_weights_tarancon_spain.csv";
+    if (!inputFile.read(inputPath)) throw new Error(`Failed to load: ${inputPath}`);
+
+    const outputFile = new DataObject();
+    const outputPath = "../results/directions_with_weights_and_efficiency_tarancon_spain.csv";
+
+	// Write header line with heliostat and area info
+    const mirrorAreaEach = MIRROR_WIDTH * MIRROR_HEIGHT;
+    const mirrorAreaTotal = mirrorAreaEach * nMax;
+    const headerLine = `# heliostats: ${nMax}, mirror_area_each: ${mirrorAreaEach.toFixed(6)}, mirror_area_total: ${mirrorAreaTotal.toFixed(6)}`;
+    outputFile.addRow(headerLine);
+
+    const irradiance = 1000;
+    const totalReflectiveArea = MIRROR_WIDTH * MIRROR_HEIGHT * nMax;
+    const maxInputPower = totalReflectiveArea * irradiance;
+
+    for (let i = 0; i < inputFile.rows(); ++i) {
+        const row = inputFile.array(i);
+        if (row.length < 3) continue;
+
+        const azimuth = parseFloat(row[0]);
+        const elevation = parseFloat(row[1]);
+        const weight = parseFloat(row[2]);
+        if ([azimuth, elevation, weight].some(Number.isNaN)) continue;
+
+        sunPos.setParameter("azimuth", azimuth);
+        sunPos.setParameter("elevation", elevation);
+        sunPos.setParameter("irradiance", irradiance);
+
+        const interceptedPower = tn.FindInterception("//Node/ReceiverGroup/InputAperture/InputApertureRotationX/Shape", rays);
+        const eta = interceptedPower / maxInputPower;
+
+        const resultLine = `${azimuth}, ${elevation}, ${weight}, ${eta}`;
+        print(resultLine);
+        outputFile.addRow(resultLine);
+    	}
+
+    outputFile.write(outputPath);
+    print(`Completed simulation. Results saved to: ${outputPath}`);
+}
+} catch (error) {
+    print(`Error in scene setup: ${error.message}`);
+}

@@ -1,0 +1,166 @@
+{
+    "spec": {
+        "_tasks": [
+            {
+                "input_file": "projects\\tarancon\\results\\directions_with_weights_and_efficiency_tarancon_spain.csv",
+                "output_file": "projects\\tarancon\\results\\annual_energy.csv",
+                "executable": "projects\\tarancon\\..\\..\\build\\apps\\AnnualEnergy\\Release\\AnnualEnergy.exe",
+                "_fw_name": "{{firetasks.compute_annual_energy.ComputeAnnualEnergyFiretask}}"
+            }
+        ]
+    },
+    "fw_id": 10,
+    "created_on": "2025-05-29T18:39:58.463762",
+    "updated_on": "2025-05-29T18:54:03.147875",
+    "launches": [
+        {
+            "fworker": {
+                "name": "Automatically generated Worker",
+                "category": "",
+                "query": "{}",
+                "env": {}
+            },
+            "fw_id": 10,
+            "launch_dir": "C:\\Users\\manue_6t240gh\\Dropbox\\OpenSource\\SunPosDNIWeights",
+            "host": "SunVanguard01",
+            "ip": "192.168.1.76",
+            "trackers": [],
+            "action": null,
+            "state": "RUNNING",
+            "state_history": [
+                {
+                    "state": "RUNNING",
+                    "created_on": "2025-05-29T18:54:03.146876",
+                    "updated_on": "2025-05-29T18:54:03.146876"
+                }
+            ],
+            "launch_id": 12
+        }
+    ],
+    "archived_launches": [
+        {
+            "fworker": {
+                "name": "Automatically generated Worker",
+                "category": "",
+                "query": "{}",
+                "env": {}
+            },
+            "fw_id": 10,
+            "launch_dir": "C:\\Users\\manue_6t240gh\\Dropbox\\OpenSource\\SunPosDNIWeights",
+            "host": "SunVanguard01",
+            "ip": "192.168.1.76",
+            "trackers": [],
+            "action": {
+                "stored_data": {
+                    "_message": "runtime error during task",
+                    "_task": {
+                        "input_file": "projects\\tarancon\\results\\directions_with_weights_and_efficiency_tarancon_spain.csv",
+                        "output_file": "projects\\tarancon\\results\\annual_energy.csv",
+                        "executable": "projects\\tarancon\\..\\..\\build\\apps\\AnnualEnergy\\Release\\AnnualEnergy.exe",
+                        "_fw_name": "{{firetasks.compute_annual_energy.ComputeAnnualEnergyFiretask}}"
+                    },
+                    "_exception": {
+                        "_stacktrace": "Traceback (most recent call last):\n  File \"C:\\Users\\manue_6t240gh\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\fireworks\\core\\rocket.py\", line 262, in run\n    m_action = t.run_task(my_spec)\n               ^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\manue_6t240gh\\Dropbox\\OpenSource\\SunPosDNIWeights\\firetasks\\compute_annual_energy.py\", line 26, in run_task\n    raise FileNotFoundError(f\"Input file not found: {input_file}\")\nFileNotFoundError: Input file not found: projects\\tarancon\\results\\directions_with_weights_and_efficiency_tarancon_spain.csv\n",
+                        "_details": null
+                    }
+                },
+                "exit": true,
+                "update_spec": {},
+                "mod_spec": [],
+                "additions": [],
+                "detours": [],
+                "defuse_children": false,
+                "defuse_workflow": false,
+                "propagate": false
+            },
+            "state": "FIZZLED",
+            "state_history": [
+                {
+                    "state": "RUNNING",
+                    "created_on": "2025-05-29T18:41:24.854367",
+                    "updated_on": "2025-05-29T18:41:24.868305",
+                    "checkpoint": {
+                        "_task_n": 0,
+                        "_all_stored_data": {},
+                        "_all_update_spec": {},
+                        "_all_mod_spec": []
+                    }
+                },
+                {
+                    "state": "FIZZLED",
+                    "created_on": "2025-05-29T18:41:24.869313",
+                    "checkpoint": {
+                        "_task_n": 0,
+                        "_all_stored_data": {},
+                        "_all_update_spec": {},
+                        "_all_mod_spec": []
+                    }
+                }
+            ],
+            "launch_id": 9
+        },
+        {
+            "fworker": {
+                "name": "Automatically generated Worker",
+                "category": "",
+                "query": "{}",
+                "env": {}
+            },
+            "fw_id": 10,
+            "launch_dir": "C:\\Users\\manue_6t240gh\\Dropbox\\OpenSource\\SunPosDNIWeights",
+            "host": "SunVanguard01",
+            "ip": "192.168.1.76",
+            "trackers": [],
+            "action": {
+                "stored_data": {
+                    "_message": "runtime error during task",
+                    "_task": {
+                        "input_file": "projects\\tarancon\\results\\directions_with_weights_and_efficiency_tarancon_spain.csv",
+                        "output_file": "projects\\tarancon\\results\\annual_energy.csv",
+                        "executable": "projects\\tarancon\\..\\..\\build\\apps\\AnnualEnergy\\Release\\AnnualEnergy.exe",
+                        "_fw_name": "{{firetasks.compute_annual_energy.ComputeAnnualEnergyFiretask}}"
+                    },
+                    "_exception": {
+                        "_stacktrace": "Traceback (most recent call last):\n  File \"C:\\Users\\manue_6t240gh\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\fireworks\\core\\rocket.py\", line 262, in run\n    m_action = t.run_task(my_spec)\n               ^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\manue_6t240gh\\Dropbox\\OpenSource\\SunPosDNIWeights\\firetasks\\compute_annual_energy.py\", line 26, in run_task\n    raise FileNotFoundError(f\"Input file not found: {input_file}\")\nFileNotFoundError: Input file not found: projects\\tarancon\\results\\directions_with_weights_and_efficiency_tarancon_spain.csv\n",
+                        "_details": null
+                    }
+                },
+                "exit": true,
+                "update_spec": {},
+                "mod_spec": [],
+                "additions": [],
+                "detours": [],
+                "defuse_children": false,
+                "defuse_workflow": false,
+                "propagate": false
+            },
+            "state": "FIZZLED",
+            "state_history": [
+                {
+                    "state": "RUNNING",
+                    "created_on": "2025-05-29T18:51:44.373802",
+                    "updated_on": "2025-05-29T18:51:44.405325",
+                    "checkpoint": {
+                        "_task_n": 0,
+                        "_all_stored_data": {},
+                        "_all_update_spec": {},
+                        "_all_mod_spec": []
+                    }
+                },
+                {
+                    "state": "FIZZLED",
+                    "created_on": "2025-05-29T18:51:44.406322",
+                    "checkpoint": {
+                        "_task_n": 0,
+                        "_all_stored_data": {},
+                        "_all_update_spec": {},
+                        "_all_mod_spec": []
+                    }
+                }
+            ],
+            "launch_id": 11
+        }
+    ],
+    "state": "RUNNING",
+    "name": "Compute Annual Energy"
+}

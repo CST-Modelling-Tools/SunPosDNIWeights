@@ -1,10 +1,16 @@
 # CMake build artifacts
+private_projects/
 /build/
 /CMakeFiles/
 /CMakeCache.txt
 /Makefile
 /install_manifest.txt
 /*.cmake
+**/launcher_*/
+
+__pycache__/
+*.py[cod]
+
 
 # Editor files
 *.swp

@@ -9,14 +9,21 @@
 #include <numbers>
 #include <Eigen/Dense>
 
-int main() {
-    constexpr double latitude_deg = 37.4117;
+int main(int argc, char* argv[]) {
+    if (argc < 5) {
+        std::cerr << "Usage: " << argv[0]
+                  << " <latitude_deg> <longitude_deg> <dni_input.csv> <output.csv>\n";
+        return 1;
+    }
+
+    const double latitude_deg = std::stod(argv[1]);
+    const double longitude_deg = std::stod(argv[2]); // (currently unused)
+    const std::string dniFile = argv[3];
+    const std::string outputFile = argv[4];
+
     constexpr double epsilon_deg = 23.4;   // Obliquity of the ecliptic
     constexpr double rho_deg = 23.4/1.2;   // Angular resolution
     constexpr int polyharmonicOrder = 6;
-
-    const std::string dniFile = "C:/Users/manue_6t240gh/Dropbox/OpenSource/SunPosDNIWeights/data/dni_tarancon_spain.csv";
-    const std::string outputFile = "C:/Users/manue_6t240gh/Dropbox/OpenSource/SunPosDNIWeights/data/directions_with_weights_tarancon_spain.csv";
 
     const double deg2rad = std::numbers::pi / 180.0;
     const double rad2deg = 180.0 / std::numbers::pi;
@@ -59,18 +66,28 @@ int main() {
     DNISeries dniSeries(dniFile);
     std::vector<double> weights(kernels.size(), 0.0);
 
+    double totalDNI = 0.0;
+
     for (const auto& [time, dni] : dniSeries.getTimeSeries()) {
         Eigen::Vector3d sunDir = SunPosition::getSunDirection(time, latitude_deg, 0.0);  // longitude ignored here
         if (sunDir.z() <= 0.0) continue;
 
+        totalDNI += dni;
         for (size_t p = 0; p < kernels.size(); ++p)
             weights[p] += dni * kernels[p](sunDir);
     }
+
+    double annualDNI_kWh_per_m2 = totalDNI / 1000.0;
+
 
     // Step 4: Output azimuth, elevation, weight to CSV
     std::ofstream out(outputFile);
     out << std::fixed << std::setprecision(6);
 
+    out << "# latitude_deg: " << latitude_deg
+        << ", annual_dni_kWh_per_m2: " << annualDNI_kWh_per_m2 << "\n";
+    out << "# azimuth_deg, elevation_deg, weight\n";
+      
     for (size_t i = 0; i < sampleDirs.size(); ++i) {
         const auto& r = sampleDirs[i];
         double el = std::asin(r.z()) * rad2deg;
