@@ -1,6 +1,8 @@
 from fireworks import FiretaskBase, explicit_serialize, Firework
 from pathlib import Path
 import subprocess
+import os
+import shutil
 
 @explicit_serialize
 class ComputeAnnualEnergyFiretask(FiretaskBase):
@@ -29,6 +31,13 @@ class ComputeAnnualEnergyFiretask(FiretaskBase):
         subprocess.run([str(exe), str(input_file), str(output_file)], check=True)
 
         print(f"Annual energy results saved to: {output_file}")
+
+        # --- Cleanup: remove launcher dir if inside one ---
+        current_dir = Path.cwd()
+        if current_dir.name.startswith("launcher_"):
+            print(f"Cleaning up launcher directory: {current_dir}")
+            os.chdir(current_dir.parent)  # Step out of the folder to allow deletion
+            shutil.rmtree(current_dir)
 
 
 def get_compute_annual_energy_firework(project_manager, executable_path):

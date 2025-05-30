@@ -1,6 +1,8 @@
 from fireworks import FiretaskBase, explicit_serialize, Firework
 from pathlib import Path
 import subprocess
+import os
+import shutil
 
 @explicit_serialize
 class GenerateSamplingDirectionsFiretask(FiretaskBase):
@@ -21,6 +23,13 @@ class GenerateSamplingDirectionsFiretask(FiretaskBase):
             [str(exe), str(latitude), str(longitude), str(dni_file), str(output_file)],
             check=True
         )
+
+        # --- Cleanup: remove launcher dir if inside one ---
+        current_dir = Path.cwd()
+        if current_dir.name.startswith("launcher_"):
+            print(f"Cleaning up launcher directory: {current_dir}")
+            os.chdir(current_dir.parent)  # Step out of the folder to allow deletion
+            shutil.rmtree(current_dir)
 
 def get_generate_sampling_firework(project_manager, executable_path):
     """

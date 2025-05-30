@@ -1,6 +1,8 @@
 from fireworks import FiretaskBase, explicit_serialize, Firework
 from pathlib import Path
 import subprocess
+import os
+import shutil
 
 @explicit_serialize
 class RunTonatiuhSimulationFiretask(FiretaskBase):
@@ -36,6 +38,13 @@ class RunTonatiuhSimulationFiretask(FiretaskBase):
         )
 
         print("Tonatiuh++ simulation completed.")
+
+        # --- Cleanup: remove launcher dir if inside one ---
+        current_dir = Path.cwd()
+        if current_dir.name.startswith("launcher_"):
+            print(f"Cleaning up launcher directory: {current_dir}")
+            os.chdir(current_dir.parent)  # Step out of the folder to allow deletion
+            shutil.rmtree(current_dir)
 
 
 def get_run_tonatiuh_firework(project_manager, tn_executable):
