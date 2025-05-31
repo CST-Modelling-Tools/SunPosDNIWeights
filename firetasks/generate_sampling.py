@@ -1,4 +1,4 @@
-from fireworks import FiretaskBase, explicit_serialize, Firework
+from fireworks import FiretaskBase, explicit_serialize, Firework, FWAction
 from pathlib import Path
 import subprocess
 import os
@@ -18,30 +18,28 @@ class GenerateSamplingDirectionsFiretask(FiretaskBase):
         if not exe.exists():
             raise FileNotFoundError(f"Sampling directions generator not found at {exe}")
 
-        print(f"Running: {exe} {latitude} {longitude} {dni_file} {output_file}")
+        print(f"[GenerateSampling] Running: {exe} {latitude} {longitude} {dni_file} {output_file}")
         subprocess.run(
-            [str(exe), str(latitude), str(longitude), str(dni_file), str(output_file)],
+            [str(exe), latitude, longitude, str(dni_file), str(output_file)],
             check=True
         )
 
-        # --- Cleanup: remove launcher dir if inside one ---
+        # Clean up launcher dir if inside one
         current_dir = Path.cwd()
         if current_dir.name.startswith("launcher_"):
-            print(f"Cleaning up launcher directory: {current_dir}")
-            os.chdir(current_dir.parent)  # Step out of the folder to allow deletion
+            os.chdir(current_dir.parent)
             shutil.rmtree(current_dir)
 
+        return FWAction()
+
 def get_generate_sampling_firework(project_manager, executable_path):
-    """
-    Utility function to build the Firework that runs the GenerateSamplingDirectionsAndWeights tool.
-    """
     return Firework(
         GenerateSamplingDirectionsFiretask(
             latitude=project_manager.latitude,
             longitude=project_manager.longitude,
-            dni_file=project_manager.dni_file,
-            output_file=project_manager.sampling_file,
-            executable=executable_path
+            dni_file=str(project_manager.dni_file),
+            output_file=str(project_manager.sampling_file),
+            executable=str(executable_path)
         ),
         name="Generate Sun Sampling Directions"
     )

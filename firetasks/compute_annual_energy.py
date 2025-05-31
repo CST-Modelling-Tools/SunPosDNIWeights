@@ -1,4 +1,4 @@
-from fireworks import FiretaskBase, explicit_serialize, Firework
+from fireworks import FiretaskBase, explicit_serialize, Firework, FWAction
 from pathlib import Path
 import subprocess
 import os
@@ -6,15 +6,6 @@ import shutil
 
 @explicit_serialize
 class ComputeAnnualEnergyFiretask(FiretaskBase):
-    """
-    Firetask that runs the C++ AnnualEnergy program to compute total energy and average efficiency.
-
-    Required parameters:
-        - input_file: Path to the Tonatiuh++ simulation results CSV
-        - output_file: Path to save the summary (.csv or .json)
-        - executable: Path to AnnualEnergy C++ executable
-    """
-
     required_params = ["input_file", "output_file", "executable"]
 
     def run_task(self, fw_spec):
@@ -23,34 +14,24 @@ class ComputeAnnualEnergyFiretask(FiretaskBase):
         exe = Path(self["executable"]).resolve()
 
         if not exe.exists():
-            raise FileNotFoundError(f"AnnualEnergy executable not found at: {exe}")
+            raise FileNotFoundError(f"AnnualEnergy executable not found: {exe}")
         if not input_file.exists():
-            raise FileNotFoundError(f"Input file not found: {input_file}")
+            raise FileNotFoundError(f"Tonatiuh++ result file not found: {input_file}")
 
-        print(f"Running: {exe} {input_file} {output_file}")
-        subprocess.run([str(exe), str(input_file), str(output_file)], check=True)
+        print(f"[AnnualEnergy] Running: {exe} {input_file} {output_file}")
+        subprocess.run(
+            [str(exe), str(input_file), str(output_file)],
+            check=True
+        )
 
-        print(f"Annual energy results saved to: {output_file}")
-
-        # --- Cleanup: remove launcher dir if inside one ---
         current_dir = Path.cwd()
         if current_dir.name.startswith("launcher_"):
-            print(f"Cleaning up launcher directory: {current_dir}")
-            os.chdir(current_dir.parent)  # Step out of the folder to allow deletion
+            os.chdir(current_dir.parent)
             shutil.rmtree(current_dir)
 
+        return FWAction()
 
 def get_compute_annual_energy_firework(project_manager, executable_path):
-    """
-    Creates a Firework to run the AnnualEnergy C++ program.
-
-    Args:
-        project_manager: ProjectManager instance
-        executable_path: Path to the AnnualEnergy binary
-
-    Returns:
-        A Firework ready to include in the FireWorks workflow.
-    """
     input_file = project_manager.results_dir / f"{project_manager.result_file_prefix}.csv"
     output_file = project_manager.results_dir / "annual_energy.csv"
 
