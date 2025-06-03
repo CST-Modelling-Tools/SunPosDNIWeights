@@ -2,16 +2,15 @@
     "spec": {
         "_tasks": [
             {
-                "input_file": "C:\\Users\\manue_6t240gh\\Dropbox\\OpenSource\\SunPosDNIWeights\\projects\\tarancon\\results\\directions_with_weights_and_efficiency_tarancon_spain.csv",
-                "output_file": "C:\\Users\\manue_6t240gh\\Dropbox\\OpenSource\\SunPosDNIWeights\\projects\\tarancon\\results\\annual_energy.csv",
-                "executable": "C:\\Users\\manue_6t240gh\\Dropbox\\OpenSource\\SunPosDNIWeights\\build\\apps\\AnnualEnergy\\Release\\AnnualEnergy.exe",
-                "_fw_name": "{{firetasks.compute_annual_energy.ComputeAnnualEnergyFiretask}}"
+                "tn_script": "C:\\Users\\manue_6t240gh\\Dropbox\\OpenSource\\SunPosDNIWeights\\projects\\tarancon\\scripts\\simulate_layout.tnhpps",
+                "tn_executable": "C:\\Users\\manue_6t240gh\\Tonatiuh++\\bin\\Tonatiuh-Application.exe",
+                "_fw_name": "{{firetasks.run_tonatiuh.RunTonatiuhSimulationFiretask}}"
             }
         ]
     },
-    "fw_id": 1,
-    "created_on": "2025-05-31T19:35:55.998596",
-    "updated_on": "2025-05-31T19:43:44.387458",
+    "fw_id": 2,
+    "created_on": "2025-06-02T10:51:43.372179",
+    "updated_on": "2025-06-02T10:51:47.338244",
     "launches": [
         {
             "fworker": {
@@ -20,7 +19,7 @@
                 "query": "{}",
                 "env": {}
             },
-            "fw_id": 1,
+            "fw_id": 2,
             "launch_dir": "C:\\Users\\manue_6t240gh\\Dropbox\\OpenSource\\SunPosDNIWeights",
             "host": "SunVanguard01",
             "ip": "192.168.1.76",
@@ -30,13 +29,13 @@
             "state_history": [
                 {
                     "state": "RUNNING",
-                    "created_on": "2025-05-31T19:43:44.386458",
-                    "updated_on": "2025-05-31T19:43:44.386458"
+                    "created_on": "2025-06-02T10:51:47.337658",
+                    "updated_on": "2025-06-02T10:51:47.337661"
                 }
             ],
-            "launch_id": 3
+            "launch_id": 1
         }
     ],
     "state": "RUNNING",
-    "name": "Compute Annual Energy"
+    "name": "Run Tonatiuh++ Simulation"
 }

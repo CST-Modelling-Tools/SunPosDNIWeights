@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import sys
 from dataclasses import dataclass, field
 from typing import Dict
 
@@ -10,28 +11,24 @@ class ProjectManager:
     config: Dict = field(init=False)
 
     def __post_init__(self):
-        self.root_dir = self.root_dir.resolve()
-        self.config_path = (self.root_dir / "config.json").resolve()
+        self.root_dir = Path(self.root_dir).resolve()
+        self.config_path = (self.root_dir / "project_config.json").resolve()
+
         if not self.config_path.exists():
             raise FileNotFoundError(f"Configuration file not found at {self.config_path}")
+
         with open(self.config_path, 'r') as f:
             self.config = json.load(f)
 
-        # Validate required fields
-        required_keys = [
-            "project_name",
-            "location",
-            "dni",
-            "scripts",
-            "folders",
-            "initial_layout",
-            "sampling_file",
-            "result_file_prefix",
-            "executables"
-        ]
-        for key in required_keys:
-            if key not in self.config:
-                raise ValueError(f"Missing required key in config: '{key}'")
+        self._add_workflows_to_sys_path_if_needed()
+
+    def _add_workflows_to_sys_path_if_needed(self):
+        paths_config = self.config.get("paths", {})
+        workflows_path = paths_config.get("workflows_dir")
+        if workflows_path:
+            full_path = (self.root_dir / workflows_path).resolve()
+            if full_path.is_dir() and str(full_path) not in sys.path:
+                sys.path.insert(0, str(full_path))
 
     @property
     def project_name(self):
@@ -39,43 +36,19 @@ class ProjectManager:
 
     @property
     def latitude(self):
-        return self.config["location"]["latitude_deg"]
+        return self.config["location"]["latitude"]
 
     @property
     def longitude(self):
-        return self.config["location"]["longitude_deg"]
+        return self.config["location"]["longitude"]
 
     @property
     def dni_file(self):
-        return (self.root_dir / self.config["dni"]["file"]).resolve()
+        return (self.root_dir / self.config["data"]["dni_file"]).resolve()
 
     @property
-    def tonatiuh_script(self):
-        return (self.root_dir / self.config["scripts"]["tonatiuh_script"]).resolve()
-
-    @property
-    def layouts_dir(self):
-        return (self.root_dir / self.config["folders"]["layouts"]).resolve()
-
-    @property
-    def results_dir(self):
-        return (self.root_dir / self.config["folders"]["results"]).resolve()
-
-    @property
-    def data_dir(self):
-        return (self.root_dir / self.config["folders"]["data"]).resolve()
-
-    @property
-    def initial_layout_file(self):
-        return (self.layouts_dir / self.config["initial_layout"]).resolve()
-
-    @property
-    def sampling_file(self):
-        return (self.results_dir / self.config["sampling_file"]).resolve()
-
-    @property
-    def result_file_prefix(self):
-        return self.config["result_file_prefix"]
+    def directions_file(self):
+        return (self.root_dir / self.config["data"]["directions_with_weights_file"]).resolve()
 
     @property
     def sampling_exe(self):
@@ -89,7 +62,14 @@ class ProjectManager:
     def energy_exe(self):
         return (self.root_dir / self.config["executables"]["energy_exe"]).resolve()
 
-    def make_dirs(self):
-        self.layouts_dir.mkdir(parents=True, exist_ok=True)
-        self.results_dir.mkdir(parents=True, exist_ok=True)
-        self.data_dir.mkdir(parents=True, exist_ok=True)
+    @property
+    def tonatiuh_script(self):
+        return (self.root_dir / self.config["scripts"]["tonatiuh_script"]).resolve()
+
+    @property
+    def results_dir(self):
+        return (self.root_dir / self.config["folders"]["results"]).resolve()
+
+    @property
+    def result_file_prefix(self):
+        return self.config.get("result_file_prefix", self.project_name)

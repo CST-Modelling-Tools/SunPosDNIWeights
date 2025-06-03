@@ -14,8 +14,9 @@ private:
     std::string filepath;
 
     double mirrorAreaTotal = 0.0;
-    double weightedEfficiencySum = 0.0;
-    double totalWeight = 0.0;
+    double annualDNI = 0.0;
+    double annualEnergy = 0.0;
+    double annualOpticalEfficiency = 0.0;
 
     bool parsed = false;
 

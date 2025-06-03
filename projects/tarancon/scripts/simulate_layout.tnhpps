@@ -186,18 +186,37 @@ try {
 
     if (rays > 0) {
         const inputFile = new DataObject();
-        if (!inputFile.read("../results/directions_with_weights_tarancon_spain.csv")) throw new Error("Missing input file");
+        if (!inputFile.read("../data/directions_with_weights_tarancon_spain.csv")) {
+            throw new Error("Missing input file");
+        }
 
         const outputFile = new DataObject();
         const outputPath = "../results/directions_with_weights_and_efficiency_tarancon_spain.csv";
 
+        // Mirror area computation
         const mirrorAreaEach = MIRROR_WIDTH * MIRROR_HEIGHT;
         const mirrorAreaTotal = mirrorAreaEach * nMax;
+
+        // Copy the latitude and DNI header line from the input file
+        const latitudeRow = inputFile.array(0);
+        const latitudeLine = latitudeRow.join(", ");
+        if (latitudeLine.startsWith("# latitude_deg:")) {
+            outputFile.addRow(latitudeLine);
+        } else {
+            throw new Error("Missing or invalid latitude/DNI header in input file.");
+        }
+
+        // Write heliostat field parameters
         outputFile.addRow(`# heliostats: ${nMax}, mirror_area_each: ${mirrorAreaEach.toFixed(6)}, mirror_area_total: ${mirrorAreaTotal.toFixed(6)}`);
 
+        // Add data header line
+        outputFile.addRow("# azimuth_deg, elevation_deg, weight, efficiency");
+
+        // Prepare ray tracing
         const irradiance = 1000;
         const maxInputPower = mirrorAreaTotal * irradiance;
 
+        // Process sun directions and weights
         for (let i = 0; i < inputFile.rows(); i++) {
             const row = inputFile.array(i);
             if (row.length < 3) continue;
@@ -219,7 +238,6 @@ try {
 
         outputFile.write(outputPath);
     }
-
 } catch (error) {
     print(`Simulation error: ${error.message}`);
 }

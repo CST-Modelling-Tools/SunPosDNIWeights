@@ -18,25 +18,31 @@ class RunTonatiuhSimulationFiretask(FiretaskBase):
             raise FileNotFoundError(f"Tonatiuh++ script file not found: {tn_script}")
 
         print(f"[Tonatiuh++] Running {tn_exe} with script {tn_script}")
+
+        # Save current launcher directory before changing
+        current_launcher_dir = Path.cwd()
+
         subprocess.run(
             [str(tn_exe), "-i", str(tn_script)],
             cwd=str(tn_script.parent),
             check=True
         )
 
-        # Cleanup
-        current_dir = Path.cwd()
-        if current_dir.name.startswith("launcher_"):
-            os.chdir(current_dir.parent)
-            shutil.rmtree(current_dir)
+        # Safe cleanup of launcher directory only if applicable
+        if current_launcher_dir.name.startswith("launcher_") and current_launcher_dir.is_dir():
+            try:
+                os.chdir(current_launcher_dir.parent)
+                shutil.rmtree(current_launcher_dir)
+            except Exception as e:
+                print(f"[Tonatiuh++] Warning: Failed to remove launcher directory {current_launcher_dir}: {e}")
 
         return FWAction()
 
-def get_run_tonatiuh_firework(project_manager, tn_executable):
+def get_run_tonatiuh_firework(project_manager):
     return Firework(
         RunTonatiuhSimulationFiretask(
             tn_script=str(project_manager.tonatiuh_script),
-            tn_executable=str(tn_executable)
+            tn_executable=str(project_manager.tonatiuh_exe)
         ),
         name="Run Tonatiuh++ Simulation"
     )

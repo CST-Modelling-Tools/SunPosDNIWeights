@@ -1,29 +1,24 @@
-from fireworks import LaunchPad, Workflow
-from generate_sampling import get_generate_sampling_firework
-from project_manager import ProjectManager
 from pathlib import Path
+from fireworks import Workflow
+from firetasks.generate_sampling import get_generate_sampling_firework
+from project_manager import ProjectManager
 
-def main():
-    # Set the path to your project root
-    root_dir = Path("C:/Users/manue_6t240gh/Dropbox/OpenSource/SunPosDNIWeights")
+def get_generate_sampling_workflow(config_path):
+    # Ensure config_path is a Path object
+    config_path = Path(config_path).resolve()
 
-    # Create the project manager to read config.json
-    pm = ProjectManager(root_dir)
+    # Get project root as the parent directory of the JSON file
+    project_root = config_path.parent
 
-    # Define path to the executable (.exe) built by Visual Studio Code
-    build_type = "Release"  # or "Debug"
-    exe_path = root_dir / "build" / "tools" / "GenerateSamplingDirectionsAndWeights" / build_type / "GenerateSamplingDirectionsAndWeights.exe"
+    # Initialize project manager with project root
+    project_manager = ProjectManager(project_root)
 
-    # Create the Firework
-    fw_generate = get_generate_sampling_firework(pm, exe_path)
+    # Get path to sampling executable from project manager
+    sampling_exe = project_manager.sampling_exe
 
-    # Assemble the workflow
-    wf = Workflow([fw_generate], name=f"GenerateSampling_{pm.project_name}")
+    # Create firework
+    fw = get_generate_sampling_firework(project_manager, sampling_exe)
 
-    # Load the Firework(s) into the LaunchPad
-    lpad = LaunchPad.auto_load()  # Assumes FW_config.yaml is present
-    lpad.add_wf(wf)
-    print("Workflow added to LaunchPad.")
+    # Create and return workflow
+    return Workflow([fw], name=f"{project_manager.project_name}_generate_sampling")
 
-if __name__ == "__main__":
-    main()
