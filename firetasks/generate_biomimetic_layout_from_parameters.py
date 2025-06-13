@@ -10,7 +10,6 @@ class GenerateBiomimeticLayoutFiretask(FiretaskBase):
         "parameters",          # [a0, b, delta]
         "output_layout_file",  # Path to output CSV
         "num_heliostats",      # e.g. 223
-        "tower_height",        # e.g. 35.0
         "bubble_radius"        # e.g. 4.5
     ]
 

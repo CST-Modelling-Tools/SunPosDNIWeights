@@ -6,7 +6,6 @@ import csv
 def generate_biomimetic_spiral_layout(
     output_file: Path,
     num_heliostats: int,
-    tower_height: float,
     a0: float,
     b: float,
     delta: float,
@@ -19,7 +18,6 @@ def generate_biomimetic_spiral_layout(
     Parameters:
         output_file: Path to the output CSV file.
         num_heliostats: Number of heliostats to generate.
-        tower_height: Height of the tower base (not used here, but may be useful in future).
         a0, b, delta: Spiral parameters as described in Noone et al. (2012).
         receiver_height: Fixed receiver height (z position of receiver center).
         bubble_radius: Minimum allowed radius for heliostat placement (enforced exclusion radius).

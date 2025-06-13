@@ -17,10 +17,27 @@
     "tonatiuh_script": "scripts/simulate_layout_tarancon_spain.tnhpps"
   },
   "folders": {
-    "results": "results"
+    "results": "results",
+    "layouts": "layouts"
   },
   "result_file_prefix": "tarancon_spain",
   "paths": {
     "workflows_dir": "../../workflows"
+  },
+  "optimization_config": {
+    "num_heliostats": 223,
+    "bubble_radius": 4.5,
+    "receiver_height": 35.0,
+    "parameter_bounds": {
+      "a0": [5.0, 20.0],
+      "b": [0.5, 5.0],
+      "delta": [0.0, 6.283185307179586]
+    },
+    "population_size": 10,
+    "max_generations": 50,
+    "differential_evolution": {
+      "mutation_factor": 0.8,
+      "crossover_rate": 0.9
+    }
   }
 }
