@@ -1,5 +1,5 @@
 {
-  "project_name": "tarancon",
+  "project_name": "tarancon_spain",
   "location": {
     "latitude": 39.872,
     "longitude": -3.01
@@ -14,12 +14,12 @@
     "energy_exe": "../../build/apps/AnnualEnergy/Release/AnnualEnergy.exe"
   },
   "scripts": {
-    "tonatiuh_script": "scripts/simulate_layout.tnhpps"
+    "tonatiuh_script": "scripts/simulate_layout_tarancon_spain.tnhpps"
   },
   "folders": {
     "results": "results"
   },
-  "result_file_prefix": "tarancon",
+  "result_file_prefix": "tarancon_spain",
   "paths": {
     "workflows_dir": "../../workflows"
   }

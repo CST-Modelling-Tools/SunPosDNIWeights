@@ -21,4 +21,3 @@ def get_generate_sampling_workflow(config_path):
 
     # Create and return workflow
     return Workflow([fw], name=f"{project_manager.project_name}_generate_sampling")
-

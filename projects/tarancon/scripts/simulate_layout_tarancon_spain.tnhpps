@@ -9,8 +9,15 @@ let V_REC = `0 0 ${RECEIVER_Z}`;
 
 const RECEIVER_RADIUS = 0.865;
 const TOWER_SIDE = 4.0;
-const rays = 5000000;
+const rays = -5000000;
 let TOWER_HEIGHT = RECEIVER_Z - RECEIVER_RADIUS * Math.cos(RECEIVER_ANGLE_RAD);
+
+const GRID_MARGIN = TOWER_SIDE + 2.5; // meters
+let minX = Infinity;
+let maxX = -Infinity;
+let minY = Infinity;
+let maxY = -Infinity;
+
 let nMax = 0;
 
 function createNode(parent, name) {
@@ -37,12 +44,13 @@ function applyMaterial(shape, parameters) {
 }
 
 function makeHeliostat(parent, name, position, aiming, focus) {
+    const PYLON_LENGTH = 2.1;
     const heliostatNode = createNode(parent, name);
     heliostatNode.setParameter("translation", `${position[0]} ${position[1]} 0`);
 
     const tracker = heliostatNode.createTracker();
     const armature = tracker.insertArmature("two-axes");
-    armature.setParameter("primaryShift", `0 0 ${position[2]}`);
+	armature.setParameter("primaryShift", `0 0 ${position[2] + PYLON_LENGTH}`);
     armature.setParameter("primaryAxis", "0 0 1");
     armature.setParameter("primaryAngles", "-360 360");
     armature.setParameter("secondaryShift", "0 0 0");
@@ -80,7 +88,7 @@ function makeHeliostat(parent, name, position, aiming, focus) {
     pylon.profile.setParameter("uMin", 0.0);
     pylon.profile.setParameter("uMax", "360d");
     pylon.profile.setParameter("vMin", 0.0);
-    pylon.profile.setParameter("vMax", position[2] - 0.5);
+    pylon.profile.setParameter("vMax", position[2] + PYLON_LENGTH - 0.2);
 
     pylon.shape.insertMaterial("Transparent");
     applyMaterial(pylon.shape, {
@@ -117,13 +125,19 @@ function generateHeliostatFieldFromCSV(parent, csvFilePath) {
 
     parent.setName("HeliostatField");
     const nodeHeliostats = createNode(parent, "Heliostats");
-
     nMax = 0;
     for (let i = 2; i < file.rows(); i++) {
         const row = file.array(i);
         if (row.length < 5) continue;
         const [label, x, y, z, focus] = [row[0], ...row.slice(1).map(parseFloat)];
         if ([x, y, z, focus].some(Number.isNaN)) continue;
+
+        // Update global min/max
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+
         makeHeliostat(nodeHeliostats, label, [x, y, z], V_REC, focus);
         nMax++;
     }
@@ -160,7 +174,7 @@ try {
     tn.Clear();
 
     const field = new NodeObject();
-    generateHeliostatFieldFromCSV(field, "../layouts/layout_initial.csv");
+    generateHeliostatFieldFromCSV(field, "../layouts/layout_test.csv");
     tn.InsertScene(field);
 
     const receiver = new NodeObject();
@@ -180,9 +194,15 @@ try {
     sunPos.setParameter("azimuth", 180);
     sunPos.setParameter("elevation", 67);
 
+
+	const gridMinX = Math.floor(minX - GRID_MARGIN);
+	const gridMaxX = Math.ceil(maxX + GRID_MARGIN);
+	const gridMinY = Math.floor(minY - GRID_MARGIN);
+	const gridMaxY = Math.ceil(maxY + GRID_MARGIN);
+
     const grid = scene.getPart("world.terrain").getPart("grid");
-    grid.setParameter("min", "-50 0 0");
-    grid.setParameter("max", "50 110 0");
+	grid.setParameter("min", `${gridMinX} ${gridMinY} 0`);
+	grid.setParameter("max", `${gridMaxX} ${gridMaxY} 0`);
 
     if (rays > 0) {
         const inputFile = new DataObject();

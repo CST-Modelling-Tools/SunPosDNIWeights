@@ -38,7 +38,7 @@ def get_generate_sampling_firework(project_manager, executable_path):
             latitude=project_manager.latitude,
             longitude=project_manager.longitude,
             dni_file=str(project_manager.dni_file),
-            output_file=str(project_manager.sampling_file),
+            output_file=str(project_manager.directions_file),
             executable=str(executable_path)
         ),
         name="Generate Sun Sampling Directions"
