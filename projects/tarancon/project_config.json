@@ -26,6 +26,7 @@
   },
   "optimization_config": {
     "type": "differential_evolution",
+    "layout_generator_type": "biomimetic_spiral",
     "num_heliostats": 223,
     "bubble_radius": 4.5,
     "receiver_height": 35.0,

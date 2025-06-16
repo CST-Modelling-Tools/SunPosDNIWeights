@@ -20,21 +20,16 @@ def get_optimize_generation_workflow(project_root: Path, parameter_population: l
     fireworks = []
 
     for params in parameter_population:
-        generation_id = params["generation_id"]
-        a0 = params["a0"]
-        b = params["b"]
-        delta = params["delta"]
-
         firework = Firework(
             ComputeFitnessFiretask(
                 project_root=str(project_root),
-                generation_id=generation_id,
-                a0=a0,
-                b=b,
-                delta=delta
+                generation_id=params["generation_id"],
+                a0=params["a0"],
+                b=params["b"],
+                delta=params["delta"]
             ),
-            name=f"Evaluate layout {generation_id}_{a0:.2f}_{b:.2f}_{delta:.2f}"
+            name=f"Evaluate layout {params['generation_id']}_{params['a0']:.2f}_{params['b']:.2f}_{params['delta']:.2f}"
         )
         fireworks.append(firework)
 
-    return Workflow(fireworks, name="Evaluate Generation")
+    return Workflow(fireworks, name=f"Evaluate Generation {parameter_population[0]['generation_id']}")

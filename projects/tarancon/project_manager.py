@@ -117,3 +117,7 @@ class ProjectManager:
     @property
     def parameter_sets_file(self):
         return (self.root_dir / "data" / "parameter_sets.csv").resolve()
+    
+    @property
+    def layout_generator_type(self):
+        return self.config["optimization_config"]["layout_generator_type"]

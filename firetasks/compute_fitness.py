@@ -1,81 +1,59 @@
 from pathlib import Path
-from fireworks import FiretaskBase, explicit_serialize, FWAction
+from fireworks import FiretaskBase, explicit_serialize, Firework, FWAction
 import subprocess
 import shutil
 import os
-import csv
-from layout_generators.biomimetic_spiral_layout_generator import generate_biomimetic_spiral_layout
 
 @explicit_serialize
 class ComputeFitnessFiretask(FiretaskBase):
     required_params = ["project_root", "generation_id", "a0", "b", "delta"]
 
     def run_task(self, fw_spec):
+        # Extract parameters
         project_root = Path(self["project_root"]).resolve()
         generation_id = self["generation_id"]
-        a0 = float(self["a0"])
-        b = float(self["b"])
-        delta = float(self["delta"])
+        a0 = self["a0"]
+        b = self["b"]
+        delta = self["delta"]
 
-        manager_path = project_root / "project_manager.py"
-        import importlib.util
-        spec = importlib.util.spec_from_file_location("project_manager", str(manager_path))
-        project_manager_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(project_manager_module)
-        manager = project_manager_module.ProjectManager(project_root)
+        # Construct layout_id based on generation_id and rounded parameters
+        layout_id = f"{generation_id}_{a0:.2f}_{b:.2f}_{delta:.2f}".replace('.', 'p')
 
-        # Define layout ID
-        layout_id = f"{generation_id}_{a0:.3f}_{b:.3f}_{delta:.3f}".replace(".", "p")
-        layout_file = manager.layouts_dir / f"layout_{layout_id}.csv"
+        # Define file paths
+        layout_file = project_root / "layouts" / f"layout_{layout_id}.csv"
+        efficiency_file = project_root / "results" / f"efficiency_{layout_id}.csv"
+        energy_output_file = project_root / "results" / f"fitness_{layout_id}.csv"
 
-        # Generate layout
-        generate_biomimetic_spiral_layout(
-            output_file=layout_file,
-            num_heliostats=manager.num_heliostats,
-            a0=a0,
-            b=b,
-            delta=delta,
-            receiver_height=manager.receiver_height,
-            bubble_radius=manager.bubble_radius
+        # Get paths from fw_spec
+        tn_exe = Path(fw_spec["tonatiuh_exe"]).resolve()
+        tn_script = Path(fw_spec["tonatiuh_script"]).resolve()
+        energy_exe = Path(fw_spec["energy_exe"]).resolve()
+
+        # Generate modified Tonatiuh++ script
+        simulate_script_text = tn_script.read_text()
+        simulate_script_text = simulate_script_text.replace(
+            "../layouts/layout_initial.csv", f"../layouts/layout_{layout_id}.csv"
         )
+        temp_script_path = project_root / "scripts" / f"simulate_{layout_id}.tnhpps"
+        temp_script_path.write_text(simulate_script_text)
 
-        # Replace layout path in simulate_layout script
-        simulate_template = manager.tonatiuh_script.read_text()
-        simulate_custom = simulate_template.replace(
-            "../layouts/layout_initial.csv",
-            f"../layouts/layout_{layout_id}.csv"
-        )
-        temp_script = manager.root_dir / "scripts" / f"simulate_{layout_id}.tnhpps"
-        temp_script.write_text(simulate_custom)
-
-        efficiency_file = manager.results_dir / f"efficiency_{layout_id}.csv"
-        fitness_output_file = manager.results_dir / f"fitness_{layout_id}.csv"
-
+        # Run Tonatiuh++
         subprocess.run(
-            [str(manager.tonatiuh_exe), "-i", str(temp_script)],
-            cwd=str(temp_script.parent),
+            [str(tn_exe), "-i", str(temp_script_path)],
+            cwd=str(temp_script_path.parent),
             check=True
         )
 
+        # Run annual energy tool
         subprocess.run(
-            [str(manager.energy_exe), str(efficiency_file), str(fitness_output_file)],
-            cwd=str(manager.root_dir),
+            [str(energy_exe), str(efficiency_file), str(energy_output_file)],
+            cwd=str(project_root),
             check=True
         )
 
-        # Read fitness value
-        with open(fitness_output_file) as f:
-            fitness_line = f.readline().strip()
-            fitness_value = float(fitness_line.split(",")[-1])
-
-        # Append parameters and fitness to parameter_sets.csv
-        with open(manager.parameter_sets_file, mode="a", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow([generation_id, a0, b, delta, fitness_value])
-
-        # Clean up
+        # Clean up temp script
         try:
-            os.remove(temp_script)
+            os.remove(temp_script_path)
         except Exception:
             pass
 
