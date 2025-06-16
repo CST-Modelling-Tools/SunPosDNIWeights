@@ -1,4 +1,4 @@
-from project_manager import ProjectManager
+from projects.tarancon.project_manager import ProjectManager
 from fireworks import LaunchPad
 
 if __name__ == "__main__":

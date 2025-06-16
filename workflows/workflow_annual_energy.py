@@ -1,7 +1,7 @@
 from fireworks import Workflow
 from firetasks.run_tonatiuh import get_run_tonatiuh_firework
 from firetasks.compute_annual_energy import get_compute_annual_energy_firework
-from project_manager import ProjectManager
+from projects.tarancon.project_manager import ProjectManager
 
 def get_annual_energy_workflow(project_root):
     # Load project

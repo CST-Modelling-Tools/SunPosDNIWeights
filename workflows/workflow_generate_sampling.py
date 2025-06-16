@@ -1,7 +1,7 @@
 from pathlib import Path
 from fireworks import Workflow
 from firetasks.generate_sampling import get_generate_sampling_firework
-from project_manager import ProjectManager
+from projects.tarancon.project_manager import ProjectManager
 
 def get_generate_sampling_workflow(config_path):
     # Ensure config_path is a Path object

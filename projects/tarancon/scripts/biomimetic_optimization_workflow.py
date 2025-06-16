@@ -5,7 +5,7 @@ from firetasks.generate_next_parameter_set import GenerateNextParameterSetFireta
 from firetasks.generate_biomimetic_layout_from_parameters import GenerateBiomimeticLayoutFiretask
 from firetasks.run_tonatiuh import RunTonatiuhSimulationFiretask
 from firetasks.compute_fitness import ComputeFitnessFiretask
-from project_manager import ProjectManager
+from projects.tarancon.project_manager import ProjectManager
 
 def get_biomimetic_optimization_workflow(project_root: str) -> Workflow:
     project_root = Path(project_root).resolve()

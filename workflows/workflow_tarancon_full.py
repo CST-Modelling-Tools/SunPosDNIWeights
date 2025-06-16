@@ -2,7 +2,7 @@ from fireworks import Workflow
 from firetasks.generate_sampling import get_generate_sampling_firework
 from firetasks.run_tonatiuh import get_run_tonatiuh_firework
 from firetasks.compute_annual_energy import get_compute_annual_energy_firework
-from project_manager import ProjectManager
+from projects.tarancon.project_manager import ProjectManager
 from pathlib import Path
 
 def get_tarancon_workflow(pm: ProjectManager, layout_file: Path) -> Workflow:

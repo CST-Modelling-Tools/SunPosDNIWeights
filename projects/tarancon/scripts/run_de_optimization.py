@@ -1,5 +1,5 @@
 from pathlib import Path
-from project_manager import ProjectManager
+from projects.tarancon.project_manager import ProjectManager
 from evaluators.workflow_evaluator import evaluate_layout
 from optimizers.de_blackbox_optimizer import DifferentialEvolutionOptimizer
 
