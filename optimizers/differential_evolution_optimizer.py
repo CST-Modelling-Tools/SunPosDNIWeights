@@ -1,0 +1,56 @@
+import random
+import math
+from typing import List, Dict
+from .metaheuristic_optimizer import MetaheuristicOptimizer
+
+class DifferentialEvolutionOptimizer(MetaheuristicOptimizer):
+    def __init__(self, bounds: Dict[str, List[float]], population_size: int, max_generations: int,
+                 mutation_factor: float, crossover_rate: float):
+        self.bounds = bounds
+        self.population_size = population_size
+        self.max_generations = max_generations
+        self.mutation_factor = mutation_factor
+        self.crossover_rate = crossover_rate
+        self.generation = 0
+        self.population = self._initialize_population()
+        self.fitnesses = [None] * population_size
+
+    def _initialize_population(self) -> List[Dict]:
+        return [
+            {key: random.uniform(*self.bounds[key]) for key in self.bounds}
+            for _ in range(self.population_size)
+        ]
+
+    def suggest(self) -> List[Dict]:
+        if self.generation == 0:
+            return self.population
+        suggestions = []
+        for i in range(self.population_size):
+            indices = list(range(self.population_size))
+            indices.remove(i)
+            a, b, c = random.sample(indices, 3)
+            base = self.population[a]
+            diff1 = self.population[b]
+            diff2 = self.population[c]
+            trial = {}
+            for key in self.bounds:
+                if random.random() < self.crossover_rate:
+                    value = base[key] + self.mutation_factor * (diff1[key] - diff2[key])
+                    min_val, max_val = self.bounds[key]
+                    value = max(min_val, min(max_val, value))
+                    trial[key] = value
+                else:
+                    trial[key] = self.population[i][key]
+            suggestions.append(trial)
+        return suggestions
+
+    def update(self, evaluated_population: List[Dict]):
+        for i, candidate in enumerate(evaluated_population):
+            new_fitness = candidate["fitness"]
+            if self.fitnesses[i] is None or new_fitness > self.fitnesses[i]:
+                self.population[i] = {k: v for k, v in candidate.items() if k != "fitness"}
+                self.fitnesses[i] = new_fitness
+        self.generation += 1
+
+    def is_done(self) -> bool:
+        return self.generation >= self.max_generations

@@ -25,6 +25,7 @@
     "workflows_dir": "../../workflows"
   },
   "optimization_config": {
+    "type": "differential_evolution",
     "num_heliostats": 223,
     "bubble_radius": 4.5,
     "receiver_height": 35.0,

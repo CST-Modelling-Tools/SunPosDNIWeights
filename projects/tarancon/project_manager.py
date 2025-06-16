@@ -71,6 +71,10 @@ class ProjectManager:
         return (self.root_dir / self.config["folders"]["results"]).resolve()
 
     @property
+    def layouts_dir(self):
+        return (self.root_dir / self.config["folders"]["layouts"]).resolve()
+
+    @property
     def result_file_prefix(self):
         return self.config.get("result_file_prefix", self.project_name)
 
@@ -99,16 +103,16 @@ class ProjectManager:
         return self.config["optimization_config"]["max_generations"]
 
     @property
+    def optimizer_type(self):
+        return self.config["optimization_config"]["type"]
+
+    @property
     def mutation_factor(self):
         return self.config["optimization_config"]["differential_evolution"]["mutation_factor"]
 
     @property
     def crossover_rate(self):
         return self.config["optimization_config"]["differential_evolution"]["crossover_rate"]
-
-    @property
-    def layouts_dir(self):
-        return (self.root_dir / "layouts").resolve()
 
     @property
     def parameter_sets_file(self):
