@@ -1,3 +1,5 @@
+# File: tests/test_compute_fitness.py
+
 import tempfile
 from pathlib import Path
 from firetasks.compute_fitness import ComputeFitnessFiretask
@@ -11,9 +13,9 @@ def test_compute_fitness_firetask():
         scripts_dir.mkdir()
         results_dir.mkdir()
 
-        # ✅ Just the relative path to match what's being replaced
+        # Dummy script with matching string
         dummy_script = scripts_dir / "simulate_layout.tnhpps"
-        dummy_script.write_text("../layouts/layout_initial.csv")
+        dummy_script.write_text("loadLayout('../layouts/layout_initial.csv')")
 
         task = ComputeFitnessFiretask({
             "project_root": str(project_root),
@@ -26,7 +28,8 @@ def test_compute_fitness_firetask():
         fw_spec = {
             "tonatiuh_exe": "/mock/path/to/tonatiuh",
             "tonatiuh_script": str(dummy_script.resolve()),
-            "energy_exe": "/mock/path/to/energy"
+            "energy_exe": "/mock/path/to/energy",
+            "skip_cleanup": True  # <-- Prevents script deletion
         }
 
         with patch("subprocess.run") as mock_run:
@@ -34,6 +37,7 @@ def test_compute_fitness_firetask():
             result = task.run_task(fw_spec)
 
         assert result is not None
+
         layout_id = "000_10p00_2p00_0p00"
-        expected_script = project_root / "scripts" / f"simulate_{layout_id}.tnhpps"
-        assert expected_script.exists(), f"Expected script {expected_script.resolve(strict=False)} was not created."
+        expected_script = scripts_dir / f"simulate_{layout_id}.tnhpps"
+        assert expected_script.exists(), f"Expected script {expected_script.resolve()} was not created."

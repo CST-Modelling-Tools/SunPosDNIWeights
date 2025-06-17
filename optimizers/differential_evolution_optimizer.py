@@ -1,16 +1,20 @@
 import random
-import math
 from typing import List, Dict
 from .metaheuristic_optimizer import MetaheuristicOptimizer
 
 class DifferentialEvolutionOptimizer(MetaheuristicOptimizer):
-    def __init__(self, bounds: Dict[str, List[float]], population_size: int, max_generations: int,
-                 mutation_factor: float, crossover_rate: float):
+    def __init__(self,
+                 bounds: Dict[str, List[float]],
+                 population_size: int,
+                 mutation_factor: float,
+                 crossover_rate: float,
+                 max_generations: int):
         self.bounds = bounds
         self.population_size = population_size
-        self.max_generations = max_generations
         self.mutation_factor = mutation_factor
         self.crossover_rate = crossover_rate
+        self.max_generations = max_generations
+
         self.generation = 0
         self.population = self._initialize_population()
         self.fitnesses = [None] * population_size
@@ -21,9 +25,10 @@ class DifferentialEvolutionOptimizer(MetaheuristicOptimizer):
             for _ in range(self.population_size)
         ]
 
-    def suggest(self) -> List[Dict]:
+    def suggest(self, generation_id: int) -> List[Dict]:
         if self.generation == 0:
             return self.population
+
         suggestions = []
         for i in range(self.population_size):
             indices = list(range(self.population_size))
@@ -32,16 +37,18 @@ class DifferentialEvolutionOptimizer(MetaheuristicOptimizer):
             base = self.population[a]
             diff1 = self.population[b]
             diff2 = self.population[c]
+
             trial = {}
             for key in self.bounds:
                 if random.random() < self.crossover_rate:
-                    value = base[key] + self.mutation_factor * (diff1[key] - diff2[key])
+                    mutated_value = base[key] + self.mutation_factor * (diff1[key] - diff2[key])
                     min_val, max_val = self.bounds[key]
-                    value = max(min_val, min(max_val, value))
-                    trial[key] = value
+                    trial[key] = max(min_val, min(max_val, mutated_value))
                 else:
                     trial[key] = self.population[i][key]
+
             suggestions.append(trial)
+
         return suggestions
 
     def update(self, evaluated_population: List[Dict]):
@@ -52,5 +59,5 @@ class DifferentialEvolutionOptimizer(MetaheuristicOptimizer):
                 self.fitnesses[i] = new_fitness
         self.generation += 1
 
-    def is_done(self) -> bool:
+    def is_done(self, generation_id=None, max_generations=None) -> bool:
         return self.generation >= self.max_generations

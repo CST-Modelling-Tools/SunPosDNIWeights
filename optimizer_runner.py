@@ -1,55 +1,97 @@
-import importlib.util
-import time
+# File: optimizer_runner.py
+
+import sys
+import json
+import csv
 from pathlib import Path
+from importlib.util import spec_from_file_location, module_from_spec
 from fireworks import LaunchPad
+from firetasks.create_population_folder import CreateNextPopulationFolderFiretask
 from workflows.workflow_optimize_generation import get_optimize_generation_workflow
+from importlib import import_module
 
-def load_project_manager(project_root: Path):
-    project_root = Path(project_root).resolve()
-    manager_path = project_root / "project_manager.py"
-    spec = importlib.util.spec_from_file_location("project_manager", str(manager_path))
-    project_manager_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(project_manager_module)
-    return project_manager_module.ProjectManager()
 
-def get_optimizer(manager):
-    optimizer_type = manager.optimizer_type.lower()
-    if optimizer_type == "differential_evolution":
-        from optimizer.differential_evolution import DifferentialEvolutionOptimizer
-        return DifferentialEvolutionOptimizer(
-            bounds=manager.parameter_bounds,
-            population_size=manager.population_size,
-            mutation_factor=manager.mutation_factor,
-            crossover_rate=manager.crossover_rate,
-            max_generations=manager.max_generations
-        )
-    else:
-        raise ValueError(f"Unsupported optimizer type: {optimizer_type}")
+def load_module_from_path(name, path):
+    spec = spec_from_file_location(name, path)
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
-def run_optimizer(project_root: Path):
-    manager = load_project_manager(project_root)
-    optimizer = get_optimizer(manager)
 
+def load_optimizer(class_path, config):
+    module_path, class_name = class_path.rsplit(".", 1)
+    module = import_module(module_path)
+    return getattr(module, class_name)(**config)
+
+
+def run_optimization_cycle(config_path_str):
+    config_path = Path(config_path_str).resolve()
+    project_root = config_path.parent
+
+    # Dynamically import ProjectManager from project folder
+    pm_module = load_module_from_path("project_manager", str(project_root / "project_manager.py"))
+    ProjectManager = getattr(pm_module, "ProjectManager")
+    pm = ProjectManager(config_path)
+
+    # Prepare parameter_sets.csv
+    param_file = pm.parameter_sets_file
+    if not param_file.exists():
+        param_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(param_file, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["generation_id", "a0", "b", "delta", "fitnessValue"])
+
+    # Load optimizer
+    optimizer_type = pm.optimizer_type  # e.g., "differential_evolution"
+    class_path = f"optimizers.{optimizer_type}_optimizer.{optimizer_type.replace('_', ' ').title().replace(' ', '')}Optimizer"
+    optimizer = load_optimizer(class_path, {
+        "bounds": pm.parameter_bounds,
+        "population_size": pm.population_size,
+        "mutation_factor": pm.mutation_factor,
+        "crossover_rate": pm.crossover_rate,
+        "max_generations": pm.max_generations
+    })
+
+    # LaunchPad connection
     launchpad = LaunchPad.auto_load()
 
+    generation_id = 0
     while not optimizer.is_done():
-        generation = optimizer.generation
-        print(f"🔁 Generation {generation}")
+        print(f">>> Generation {generation_id} started")  # DEBUG PRINT
+        generation_str = f"{generation_id:03d}"
 
-        population = optimizer.suggest()
-        wf = get_optimize_generation_workflow(manager.root_dir, population)
+        # Create layout folder
+        CreateNextPopulationFolderFiretask({"project_root": str(pm.root_dir)}).run_task({})
+
+        # Suggest parameters
+        parameter_population = [
+            {
+                "generation_id": generation_str,
+                "a0": p["a0"],
+                "b": p["b"],
+                "delta": p["delta"]
+            }
+            for p in optimizer.suggest(generation_id)
+        ]
+
+        # Workflow
+        wf = get_optimize_generation_workflow(
+            project_root=pm.root_dir,
+            parameter_population=parameter_population,
+            config={
+                "generator_type": optimizer_type,
+                "num_heliostats": pm.num_heliostats,
+                "bubble_radius": pm.bubble_radius,
+                "receiver_height": pm.receiver_height
+            }
+        )
+
         launchpad.add_wf(wf)
+        generation_id += 1
 
-        print(f"🚀 Launched workflow for generation {generation}")
-        print("⏳ Waiting for completion...")
-
-        while launchpad.get_fw_ids(query={"state": {"$nin": ["COMPLETED", "FIZZLED"]}}):
-            time.sleep(10)
-
-        print("✅ Completed generation. Updating...")
-        optimizer.update()
-
-    print("🎯 Optimization finished.")
 
 if __name__ == "__main__":
-    run_optimizer(Path("projects/tarancon"))
+    if len(sys.argv) != 2:
+        print("Usage: python optimizer_runner.py path/to/project_config.json")
+        sys.exit(1)
+    run_optimization_cycle(sys.argv[1])
