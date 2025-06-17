@@ -1,6 +1,6 @@
 from typing import Dict
 from layout_generators.rectangular_layout_generator import generate_layout_file
-from workflows.workflow_tarancon_full import get_tarancon_workflow
+from others.workflow_tarancon_full import get_tarancon_workflow
 from fireworks import LaunchPad
 from projects.tarancon.project_manager import ProjectManager
 from pathlib import Path

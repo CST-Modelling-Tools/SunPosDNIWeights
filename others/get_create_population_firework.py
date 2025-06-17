@@ -1,6 +1,6 @@
 from fireworks import Firework
 from firetasks.create_population_folder import CreateNextPopulationFolderFiretask
-from firetasks.generate_parameter_sets import GenerateParameterSetsFiretask
+from others.generate_parameter_sets import GenerateParameterSetsFiretask
 
 def get_create_population_firework(project_root: str):
     """

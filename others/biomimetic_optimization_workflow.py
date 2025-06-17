@@ -3,7 +3,7 @@ from fireworks import Workflow, Firework
 from firetasks.create_next_population_folder import CreateNextPopulationFolderFiretask
 from firetasks.generate_next_parameter_set import GenerateNextParameterSetFiretask
 from firetasks.generate_biomimetic_layout_from_parameters import GenerateBiomimeticLayoutFiretask
-from firetasks.run_tonatiuh import RunTonatiuhSimulationFiretask
+from others.run_tonatiuh import RunTonatiuhSimulationFiretask
 from firetasks.compute_fitness import ComputeFitnessFiretask
 from projects.tarancon.project_manager import ProjectManager
 

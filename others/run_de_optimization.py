@@ -1,6 +1,6 @@
 from pathlib import Path
 from projects.tarancon.project_manager import ProjectManager
-from evaluators.workflow_evaluator import evaluate_layout
+from others.workflow_evaluator import evaluate_layout
 from optimizers.differential_evolution_optimizer import DifferentialEvolutionOptimizer
 
 # === Configuration ===

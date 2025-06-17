@@ -18,7 +18,7 @@ if not project_manager_path.exists():
 
 # Step 4: Import and launch the workflow
 from projects.tarancon.project_manager import ProjectManager
-from workflows.workflow_tarancon_full import get_tarancon_workflow
+from others.workflow_tarancon_full import get_tarancon_workflow
 from fireworks import LaunchPad
 
 if __name__ == "__main__":
