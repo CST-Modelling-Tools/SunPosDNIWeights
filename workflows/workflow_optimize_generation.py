@@ -27,7 +27,7 @@ def get_optimize_generation_workflow(project_root: Path, parameter_population: l
     fireworks = []
 
     for params in parameter_population:
-        layout_id = f"{params['generation_id']}_{params['a0']:.2f}_{params['b']:.2f}_{params['delta']:.2f}".replace('.', 'p')
+        layout_id = f"{params['generation_id']}_{params['parameters']['a0']:.2f}_{params['parameters']['b']:.2f}_{params['parameters']['delta']:.2f}".replace('.', 'p')
         layout_file = project_root / "layouts" / f"layout_{layout_id}.csv"
 
         firework = Firework(
@@ -35,7 +35,7 @@ def get_optimize_generation_workflow(project_root: Path, parameter_population: l
                 GenerateLayoutFromParametersFiretask(
                     {
                         "generator_type": config["generator_type"],
-                        "parameters": [params["a0"], params["b"], params["delta"]],
+                        "parameters": params["parameters"],
                         "output_layout_file": str(layout_file),
                         "num_heliostats": config["num_heliostats"],
                         "bubble_radius": config["bubble_radius"],
@@ -46,11 +46,12 @@ def get_optimize_generation_workflow(project_root: Path, parameter_population: l
                     {
                         "project_root": str(project_root),
                         "generation_id": params["generation_id"],
-                        "a0": params["a0"],
-                        "b": params["b"],
-                        "delta": params["delta"]
+                        "a0": params["parameters"]["a0"],
+                        "b": params["parameters"]["b"],
+                        "delta": params["parameters"]["delta"]
                     }
                 )
+
             ],
             name=f"Evaluate layout {layout_id}"
         )

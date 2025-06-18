@@ -67,9 +67,7 @@ def run_optimization_cycle(config_path_str):
         parameter_population = [
             {
                 "generation_id": generation_str,
-                "a0": p["a0"],
-                "b": p["b"],
-                "delta": p["delta"]
+                "parameters": p 
             }
             for p in optimizer.suggest(generation_id)
         ]
@@ -79,7 +77,7 @@ def run_optimization_cycle(config_path_str):
             project_root=pm.root_dir,
             parameter_population=parameter_population,
             config={
-                "generator_type": optimizer_type,
+                "generator_type": pm.layout_generator_type,
                 "num_heliostats": pm.num_heliostats,
                 "bubble_radius": pm.bubble_radius,
                 "receiver_height": pm.receiver_height
@@ -87,6 +85,9 @@ def run_optimization_cycle(config_path_str):
         )
 
         launchpad.add_wf(wf)
+        print("Workflow launched. Stopping for now to avoid infinite loop.")
+        break  # Prevent infinite generation launching
+
         generation_id += 1
 
 
