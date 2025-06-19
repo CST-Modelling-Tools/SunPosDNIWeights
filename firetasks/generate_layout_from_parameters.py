@@ -8,7 +8,7 @@ from layout_generators.layout_generator_factory import get_layout_generator
 class GenerateLayoutFromParametersFiretask(FiretaskBase):
     required_params = [
         "generator_type",       # e.g., "biomimetic_spiral"
-        "parameters",           # dictionary, e.g., {"a0": 10.0, "b": 2.0, "delta": 0.0}
+        "parameters",           # list or dict
         "output_layout_file",   # path to generated CSV file
         "num_heliostats",       # e.g., 223
         "bubble_radius"         # e.g., 4.5
@@ -21,6 +21,13 @@ class GenerateLayoutFromParametersFiretask(FiretaskBase):
     def run_task(self, fw_spec):
         generator_type = self["generator_type"]
         parameters = self["parameters"]
+
+        # Normalize parameters if passed as list
+        if isinstance(parameters, list):
+            if len(parameters) != 3:
+                raise ValueError("Expected 3 values in parameters list: [a0, b, delta]")
+            parameters = {"a0": parameters[0], "b": parameters[1], "delta": parameters[2]}
+
         output_file = Path(self["output_layout_file"]).resolve()
         num_heliostats = int(self["num_heliostats"])
         bubble_radius = float(self["bubble_radius"])

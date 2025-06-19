@@ -5,11 +5,10 @@ import json
 import csv
 from pathlib import Path
 from importlib.util import spec_from_file_location, module_from_spec
+from importlib import import_module
 from fireworks import LaunchPad
 from firetasks.create_population_folder import CreateNextPopulationFolderFiretask
 from workflows.workflow_optimize_generation import get_optimize_generation_workflow
-from importlib import import_module
-
 
 def load_module_from_path(name, path):
     spec = spec_from_file_location(name, path)
@@ -17,12 +16,10 @@ def load_module_from_path(name, path):
     spec.loader.exec_module(module)
     return module
 
-
 def load_optimizer(class_path, config):
     module_path, class_name = class_path.rsplit(".", 1)
     module = import_module(module_path)
     return getattr(module, class_name)(**config)
-
 
 def run_optimization_cycle(config_path_str):
     config_path = Path(config_path_str).resolve()
@@ -42,7 +39,7 @@ def run_optimization_cycle(config_path_str):
             writer.writerow(["generation_id", "a0", "b", "delta", "fitnessValue"])
 
     # Load optimizer
-    optimizer_type = pm.optimizer_type  # e.g., "differential_evolution"
+    optimizer_type = pm.optimizer_type
     class_path = f"optimizers.{optimizer_type}_optimizer.{optimizer_type.replace('_', ' ').title().replace(' ', '')}Optimizer"
     optimizer = load_optimizer(class_path, {
         "bounds": pm.parameter_bounds,
@@ -57,39 +54,37 @@ def run_optimization_cycle(config_path_str):
 
     generation_id = 0
     while not optimizer.is_done():
-        print(f">>> Generation {generation_id} started")  # DEBUG PRINT
         generation_str = f"{generation_id:03d}"
+        print(f">>> Generation {generation_id} started")
 
         # Create layout folder
         CreateNextPopulationFolderFiretask({"project_root": str(pm.root_dir)}).run_task({})
 
-        # Suggest parameters
         parameter_population = [
             {
                 "generation_id": generation_str,
-                "parameters": p 
+                "parameters": p  # p is a dict: {"a0": ..., "b": ..., "delta": ...}
             }
             for p in optimizer.suggest(generation_id)
         ]
 
-        # Workflow
         wf = get_optimize_generation_workflow(
             project_root=pm.root_dir,
             parameter_population=parameter_population,
             config={
-                "generator_type": pm.layout_generator_type,
+                "layout_generator_type": pm.layout_generator_type,
                 "num_heliostats": pm.num_heliostats,
                 "bubble_radius": pm.bubble_radius,
-                "receiver_height": pm.receiver_height
+                "receiver_height": pm.receiver_height,
+                "tonatiuh_exe": str(pm.tonatiuh_exe),
+                "tonatiuh_script": str(pm.tonatiuh_script),
+                "energy_exe": str(pm.energy_exe)
             }
         )
 
         launchpad.add_wf(wf)
         print("Workflow launched. Stopping for now to avoid infinite loop.")
-        break  # Prevent infinite generation launching
-
-        generation_id += 1
-
+        break
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:

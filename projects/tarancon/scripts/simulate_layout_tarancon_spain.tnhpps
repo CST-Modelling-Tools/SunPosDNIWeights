@@ -9,7 +9,7 @@ let V_REC = `0 0 ${RECEIVER_Z}`;
 
 const RECEIVER_RADIUS = 0.865;
 const TOWER_SIDE = 4.0;
-const rays = -5000000;
+const rays = 5000000;
 let TOWER_HEIGHT = RECEIVER_Z - RECEIVER_RADIUS * Math.cos(RECEIVER_ANGLE_RAD);
 
 const GRID_MARGIN = TOWER_SIDE + 2.5; // meters
@@ -206,12 +206,12 @@ try {
 
     if (rays > 0) {
         const inputFile = new DataObject();
-        if (!inputFile.read("../data/directions_with_weights_tarancon_spain.csv")) {
+        if (!inputFile.read("../../data/directions_with_weights_tarancon_spain.csv")) {
             throw new Error("Missing input file");
         }
 
         const outputFile = new DataObject();
-        const outputPath = "../results/directions_with_weights_and_efficiency_tarancon_spain.csv";
+        const outputPath = "OUTPUT_PATH_PLACEHOLDER";
 
         // Mirror area computation
         const mirrorAreaEach = MIRROR_WIDTH * MIRROR_HEIGHT;
