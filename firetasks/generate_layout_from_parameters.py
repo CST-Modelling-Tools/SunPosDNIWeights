@@ -42,6 +42,11 @@ class GenerateLayoutFromParametersFiretask(FiretaskBase):
         )
 
         # Generate layout file
-        generator.generate_layout(output_file=output_file, parameters=parameters)
+        try:
+            generator.generate_layout(output_file=output_file, parameters=parameters)
+        except RuntimeError as e:
+            print(f"[WARNING] Skipping layout due to generation error: {e}")
+            # Mark layout as invalid by not creating a file
+            return FWAction()
 
         return FWAction()

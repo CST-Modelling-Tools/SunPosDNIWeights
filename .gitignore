@@ -1,5 +1,6 @@
 # CMake build artifacts
 private_projects/
+projects/
 /build/
 /CMakeFiles/
 /CMakeCache.txt

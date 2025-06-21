@@ -7,12 +7,12 @@ class CreateNextPopulationFolderFiretask(FiretaskBase):
 
     def run_task(self, fw_spec):
         project_root = Path(self["project_root"]).resolve()
-        layouts_dir = project_root / "layouts"
-        layouts_dir.mkdir(exist_ok=True)
+        results_dir = project_root / "results"
+        results_dir.mkdir(exist_ok=True)
 
         # Find next population index
         existing_indices = []
-        for item in layouts_dir.iterdir():
+        for item in results_dir.iterdir():
             if item.is_dir() and item.name.startswith("population_"):
                 try:
                     idx = int(item.name.replace("population_", ""))
@@ -21,7 +21,7 @@ class CreateNextPopulationFolderFiretask(FiretaskBase):
                     continue
 
         next_index = 0 if not existing_indices else max(existing_indices) + 1
-        population_folder = layouts_dir / f"population_{next_index:03d}"
+        population_folder = results_dir / f"population_{next_index:03d}"
         population_folder.mkdir()
 
         # Return path in fw_spec for downstream tasks

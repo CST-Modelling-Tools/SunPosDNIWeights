@@ -174,7 +174,7 @@ try {
     tn.Clear();
 
     const field = new NodeObject();
-    generateHeliostatFieldFromCSV(field, "../layouts/layout_initial.csv");
+    generateHeliostatFieldFromCSV(field, "LAYOUT_PATH_PLACEHOLDER");
     tn.InsertScene(field);
 
     const receiver = new NodeObject();

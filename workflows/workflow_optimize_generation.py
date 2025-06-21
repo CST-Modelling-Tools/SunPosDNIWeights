@@ -7,26 +7,6 @@ from pathlib import Path
 
 
 def get_optimize_generation_workflow(project_root: Path, parameter_population: list, config: dict):
-    """
-    Creates a FireWorks workflow that evaluates all layout parameter sets in a generation.
-
-    Args:
-        project_root (Path): Path to the root of the optimization project.
-        parameter_population (list): List of dictionaries with:
-            - "generation_id": str
-            - "parameters": dict {"a0", "b", "delta"}
-        config (dict): Must include:
-            - "layout_generator_type"
-            - "num_heliostats"
-            - "bubble_radius"
-            - "receiver_height"
-            - "tonatiuh_exe"
-            - "tonatiuh_script"
-            - "energy_exe"
-
-    Returns:
-        Workflow: A FireWorks workflow evaluating the generation in parallel.
-    """
     fireworks = []
 
     for params in parameter_population:
@@ -34,12 +14,14 @@ def get_optimize_generation_workflow(project_root: Path, parameter_population: l
         p = params["parameters"]
 
         layout_id = f"{gen_id}_{p['a0']:.2f}_{p['b']:.2f}_{p['delta']:.2f}".replace('.', 'p')
-
-        population_dir = project_root / "layouts" / f"population_{gen_id}"
+        prefix = f"ps_{layout_id}"
+        population_dir = project_root / "results" / f"population_{gen_id}"
         population_dir.mkdir(parents=True, exist_ok=True)
 
-        layout_file = population_dir / f"layout_{layout_id}.csv"
-        script_file = population_dir / f"simulate_{layout_id}.tnhpps"
+        layout_file = population_dir / f"{prefix}_layout.csv"
+        script_file = population_dir / f"{prefix}.tnhpps"
+        efficiency_file = population_dir / f"{prefix}_efficiency.csv"
+        fitness_file = population_dir / f"{prefix}_fitness.csv"
 
         firework = Firework(
             [
@@ -60,6 +42,8 @@ def get_optimize_generation_workflow(project_root: Path, parameter_population: l
                         "parameters": p,
                         "layout_file": str(layout_file),
                         "script_file": str(script_file),
+                        "efficiency_file": str(efficiency_file),
+                        "fitness_file": str(fitness_file),
                         "tonatiuh_exe": config["tonatiuh_exe"],
                         "tonatiuh_script": config["tonatiuh_script"],
                         "energy_exe": config["energy_exe"]

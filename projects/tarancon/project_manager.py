@@ -71,12 +71,8 @@ class ProjectManager:
         return (self.root_dir / self.config["folders"]["results"]).resolve()
 
     @property
-    def layouts_dir(self):
-        return (self.root_dir / self.config["folders"]["layouts"]).resolve()
-
-    @property
-    def result_file_prefix(self):
-        return self.config.get("result_file_prefix", self.project_name)
+    def parameter_sets_file(self):
+        return self.results_dir / "parameter_sets.csv"
 
     @property
     def parameter_bounds(self):
@@ -114,10 +110,6 @@ class ProjectManager:
     def crossover_rate(self):
         return self.config["optimization_config"]["differential_evolution"]["crossover_rate"]
 
-    @property
-    def parameter_sets_file(self):
-        return (self.root_dir / "data" / "parameter_sets.csv").resolve()
-    
     @property
     def layout_generator_type(self):
         return self.config["optimization_config"]["layout_generator_type"]
