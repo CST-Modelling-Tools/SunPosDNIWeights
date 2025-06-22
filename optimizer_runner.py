@@ -4,6 +4,8 @@ import sys
 import json
 import csv
 import time
+import subprocess
+import signal
 from pathlib import Path
 from importlib.util import spec_from_file_location, module_from_spec
 from importlib import import_module
@@ -17,19 +19,13 @@ def load_module_from_path(name, path):
     spec.loader.exec_module(module)
     return module
 
-
 def load_optimizer(class_path, config):
     module_path, class_name = class_path.rsplit(".", 1)
     module = import_module(module_path)
     return getattr(module, class_name)(**config)
 
 def wait_for_generation_completion(launchpad: LaunchPad, generation_id: str, poll_interval=10):
-    """
-    Waits until all FireWorks for a given generation are completed or fizzled.
-    If any FireWork is FIZZLED, it aborts the wait and raises an error.
-    """
     print(f"Waiting for generation {generation_id} to complete...")
-
     while True:
         all_fws = launchpad.get_fw_ids({"spec._generation_id": generation_id})
         states = [launchpad.get_fw_by_id(fw_id).state for fw_id in all_fws]
@@ -59,6 +55,9 @@ def load_fitness_values(parameter_sets_file, generation_id):
                 fitness.append(float(row["fitnessValue"]))
     return fitness
 
+def start_rapidfire_worker():
+    print("[INFO] Starting FireWorks rapidfire worker in background...")
+    return subprocess.Popen(["rlaunch", "rapidfire"])
 
 def run_optimization_cycle(config_path_str):
     config_path = Path(config_path_str).resolve()
@@ -68,7 +67,6 @@ def run_optimization_cycle(config_path_str):
     from projects.tarancon.project_manager import ProjectManager
     pm = ProjectManager(config_path)
 
-    # Prepare parameter_sets.csv
     param_file = pm.parameter_sets_file
     if not param_file.exists():
         param_file.parent.mkdir(parents=True, exist_ok=True)
@@ -76,7 +74,6 @@ def run_optimization_cycle(config_path_str):
             writer = csv.writer(f)
             writer.writerow(["generation_id", "a0", "b", "delta", "fitnessValue"])
 
-    # Load optimizer
     optimizer_type = pm.optimizer_type
     class_path = f"optimizers.{optimizer_type}_optimizer.{optimizer_type.replace('_', ' ').title().replace(' ', '')}Optimizer"
     optimizer = load_optimizer(class_path, {
@@ -90,57 +87,57 @@ def run_optimization_cycle(config_path_str):
     launchpad = LaunchPad.auto_load()
     generation_id = 0
 
-    while not optimizer.is_done():
-        generation_str = f"{generation_id:03d}"
-        print(f">>> Generation {generation_id} started")
+    rapidfire_process = start_rapidfire_worker()
 
-        # Create layout folder
-        CreateNextPopulationFolderFiretask({"project_root": str(pm.root_dir)}).run_task({})
+    try:
+        while not optimizer.is_done():
+            generation_str = f"{generation_id:03d}"
+            print(f">>> Generation {generation_id} started")
 
-        # Suggest parameter sets
-        parameter_population = [
-            {
-                "generation_id": generation_str,
-                "parameters": p
-            }
-            for p in optimizer.suggest(generation_id)
-        ]
+            CreateNextPopulationFolderFiretask({"project_root": str(pm.root_dir)}).run_task({})
 
-        # Launch FireWorks workflow
-        wf = get_optimize_generation_workflow(
-            project_root=pm.root_dir,
-            parameter_population=parameter_population,
-            config={
-                "layout_generator_type": pm.layout_generator_type,
-                "num_heliostats": pm.num_heliostats,
-                "bubble_radius": pm.bubble_radius,
-                "receiver_height": pm.receiver_height,
-                "tonatiuh_exe": str(pm.tonatiuh_exe),
-                "tonatiuh_script": str(pm.tonatiuh_script),
-                "energy_exe": str(pm.energy_exe)
-            }
-        )
+            parameter_population = [
+                {
+                    "generation_id": generation_str,
+                    "parameters": p
+                }
+                for p in optimizer.suggest(generation_id)
+            ]
 
-        launchpad.add_wf(wf)
+            wf = get_optimize_generation_workflow(
+                project_root=pm.root_dir,
+                parameter_population=parameter_population,
+                config={
+                    "layout_generator_type": pm.layout_generator_type,
+                    "num_heliostats": pm.num_heliostats,
+                    "bubble_radius": pm.bubble_radius,
+                    "receiver_height": pm.receiver_height,
+                    "tonatiuh_exe": str(pm.tonatiuh_exe),
+                    "tonatiuh_script": str(pm.tonatiuh_script),
+                    "energy_exe": str(pm.energy_exe)
+                }
+            )
 
-        # Wait for all FireWorks to complete
-        wait_for_generation_completion(launchpad, generation_str)
+            launchpad.add_wf(wf)
 
-        # Collect fitness values from CSV
-        fitness_values = load_fitness_values(param_file, generation_id)
+            wait_for_generation_completion(launchpad, generation_str)
 
-        # Update optimizer
-        parameter_sets = pm.read_parameters_for_generation(generation_str)
-        evaluated_population = [
-            {**params, "fitness": fitness}
-            for params, fitness in zip(parameter_sets, fitness_values)
-        ]
-        optimizer.update(evaluated_population)
+            fitness_values = load_fitness_values(param_file, generation_id)
+            parameter_sets = pm.read_parameters_for_generation(generation_str)
+            evaluated_population = [
+                {**params, "fitness": fitness}
+                for params, fitness in zip(parameter_sets, fitness_values)
+            ]
+            optimizer.update(evaluated_population)
+            generation_id += 1
 
-        generation_id += 1
+        print(">>> Optimization finished.")
 
-    print(">>> Optimization finished.")
-
+    finally:
+        if rapidfire_process:
+            print("[INFO] Terminating FireWorks rapidfire worker...")
+            rapidfire_process.terminate()
+            rapidfire_process.wait()
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
