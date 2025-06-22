@@ -54,11 +54,10 @@ class DifferentialEvolutionOptimizer(MetaheuristicOptimizer):
     def update(self, evaluated_population: List[Dict]):
         for i, candidate in enumerate(evaluated_population):
             new_fitness = candidate["fitness"]
+            params = candidate["parameters"]
             if self.fitnesses[i] is None or new_fitness > self.fitnesses[i]:
-                self.population[i] = {k: v for k, v in candidate.items() if k != "fitness"}
+                self.population[i] = params
                 self.fitnesses[i] = new_fitness
-
-        # Reset fitnesses to None for the new generation
         self.fitnesses = [None] * self.population_size
         self.generation += 1
 
