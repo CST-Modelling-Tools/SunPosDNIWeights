@@ -23,6 +23,11 @@ def get_optimize_generation_workflow(project_root: Path, parameter_population: l
         efficiency_file = population_dir / f"{prefix}_efficiency.csv"
         fitness_file = population_dir / f"{prefix}_fitness.csv"
 
+        # Shared spec dictionary
+        common_spec = {
+            "_generation_id": gen_id  # 🔑 Enables wait_for_generation_completion() to filter by generation
+        }
+
         firework = Firework(
             [
                 GenerateLayoutFromParametersFiretask(
@@ -50,7 +55,8 @@ def get_optimize_generation_workflow(project_root: Path, parameter_population: l
                     }
                 )
             ],
-            name=f"Evaluate layout {layout_id}"
+            name=f"Evaluate layout {layout_id}",
+            spec=common_spec
         )
 
         fireworks.append(firework)

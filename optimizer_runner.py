@@ -11,7 +11,6 @@ from fireworks import LaunchPad
 from firetasks.create_population_folder import CreateNextPopulationFolderFiretask
 from workflows.workflow_optimize_generation import get_optimize_generation_workflow
 
-
 def load_module_from_path(name, path):
     spec = spec_from_file_location(name, path)
     module = module_from_spec(spec)
@@ -24,20 +23,32 @@ def load_optimizer(class_path, config):
     module = import_module(module_path)
     return getattr(module, class_name)(**config)
 
-
-def wait_for_generation_completion(launchpad, generation_id, timeout_sec=600, check_interval=10):
+def wait_for_generation_completion(launchpad: LaunchPad, generation_id: str, poll_interval=10):
+    """
+    Waits until all FireWorks for a given generation are completed or fizzled.
+    If any FireWork is FIZZLED, it aborts the wait and raises an error.
+    """
     print(f"Waiting for generation {generation_id} to complete...")
-    waited = 0
-    while waited < timeout_sec:
-        fw_states = launchpad.get_fw_ids(query={"name": {"$regex": f".*{generation_id}.*"}})
-        states = [launchpad.get_fw_by_id(fw_id).state for fw_id in fw_states]
-        if all(state in ("FIZZLED", "COMPLETED") for state in states):
-            print(f"All FireWorks for generation {generation_id} completed.")
-            return
-        time.sleep(check_interval)
-        waited += check_interval
-    raise TimeoutError(f"Timeout while waiting for generation {generation_id} to complete.")
 
+    while True:
+        all_fws = launchpad.get_fw_ids({"spec._generation_id": generation_id})
+        states = [launchpad.get_fw_by_id(fw_id).state for fw_id in all_fws]
+
+        completed = states.count("COMPLETED")
+        fizzled = states.count("FIZZLED")
+        total = len(states)
+
+        print(f"    Status: {completed}/{total} COMPLETED | {fizzled} FIZZLED | {states.count('RUNNING')} RUNNING")
+
+        if fizzled > 0:
+            print(f"[ERROR] {fizzled} FireWorks FIZZLED in generation {generation_id}.")
+            raise RuntimeError("Some FireWorks fizzled. Aborting optimization.")
+
+        if completed == total:
+            print(f"All FireWorks for generation {generation_id} completed.")
+            break
+
+        time.sleep(poll_interval)
 
 def load_fitness_values(parameter_sets_file, generation_id):
     fitness = []
@@ -53,9 +64,8 @@ def run_optimization_cycle(config_path_str):
     config_path = Path(config_path_str).resolve()
     project_root = config_path.parent
 
-    # Dynamically import ProjectManager from project folder
-    pm_module = load_module_from_path("project_manager", str(project_root / "project_manager.py"))
-    ProjectManager = getattr(pm_module, "ProjectManager")
+    sys.path.insert(0, str(Path(__file__).parent))  # Add root folder to PYTHONPATH
+    from projects.tarancon.project_manager import ProjectManager
     pm = ProjectManager(config_path)
 
     # Prepare parameter_sets.csv

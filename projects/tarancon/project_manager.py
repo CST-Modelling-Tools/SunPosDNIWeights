@@ -1,8 +1,10 @@
+# File: projects/tarancon/project_manager.py
+
 from pathlib import Path
 import json
 import sys
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Dict, List
 
 @dataclass
 class ProjectManager:
@@ -29,6 +31,28 @@ class ProjectManager:
             full_path = (self.root_dir / workflows_path).resolve()
             if full_path.is_dir() and str(full_path) not in sys.path:
                 sys.path.insert(0, str(full_path))
+
+    def read_parameters_for_generation(self, generation_id: str) -> List[Dict]:
+        param_sets = []
+        file_path = self.parameter_sets_file
+        if not file_path.exists():
+            return param_sets
+
+        with open(file_path, "r") as f:
+            for line in f:
+                parts = line.strip().split(",")
+                if len(parts) == 5 and parts[0] == generation_id:
+                    _, a0, b, delta, fitness = parts
+                    param_sets.append({
+                        "generation_id": generation_id,
+                        "parameters": {
+                            "a0": float(a0),
+                            "b": float(b),
+                            "delta": float(delta)
+                        },
+                        "fitness": float(fitness)
+                    })
+        return param_sets
 
     @property
     def project_name(self):

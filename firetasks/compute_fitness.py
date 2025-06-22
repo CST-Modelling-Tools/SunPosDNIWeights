@@ -84,4 +84,12 @@ class ComputeFitnessFiretask(FiretaskBase):
             writer = csv.writer(f)
             writer.writerow([generation_id, a0, b, delta, fitness_value])
 
+        # Delete all launcher folders created by FireWorks (after each layout eval)
+        for folder in project_root.glob("launcher_*"):
+            try:
+                shutil.rmtree(folder)
+                print(f"[INFO] Deleted launcher folder: {folder}")
+            except Exception as e:
+                print(f"[WARNING] Could not delete launcher folder {folder}: {e}")            
+
         return FWAction()

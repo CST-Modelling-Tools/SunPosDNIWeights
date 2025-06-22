@@ -27,7 +27,7 @@ class DifferentialEvolutionOptimizer(MetaheuristicOptimizer):
 
     def suggest(self, generation_id: int) -> List[Dict]:
         if self.generation == 0:
-            return self.population
+            return self.population  # Initial generation is already initialized
 
         suggestions = []
         for i in range(self.population_size):
@@ -57,6 +57,9 @@ class DifferentialEvolutionOptimizer(MetaheuristicOptimizer):
             if self.fitnesses[i] is None or new_fitness > self.fitnesses[i]:
                 self.population[i] = {k: v for k, v in candidate.items() if k != "fitness"}
                 self.fitnesses[i] = new_fitness
+
+        # Reset fitnesses to None for the new generation
+        self.fitnesses = [None] * self.population_size
         self.generation += 1
 
     def is_done(self, generation_id=None, max_generations=None) -> bool:
