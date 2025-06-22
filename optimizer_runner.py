@@ -5,6 +5,7 @@ import json
 import csv
 import time
 import subprocess
+import shutil
 from pathlib import Path
 from importlib.util import spec_from_file_location, module_from_spec
 from importlib import import_module
@@ -47,6 +48,15 @@ def run_rapidfire_until_complete(launchpad: LaunchPad, generation_id: str):
             break
 
         subprocess.run(["rlaunch", "rapidfire", "--nlaunches", "1"], check=True)
+
+def cleanup_launcher_folders():
+    current_dir = Path.cwd()
+    for folder in current_dir.glob("launcher_*"):
+        try:
+            shutil.rmtree(folder)
+            print(f"[INFO] Deleted launcher folder: {folder}")
+        except Exception as e:
+            print(f"[WARNING] Could not delete launcher folder {folder}: {e}")
 
 def load_fitness_values(parameter_sets_file, generation_id):
     fitness = []
@@ -112,8 +122,10 @@ def run_optimization_cycle(config_path_str):
 
         launchpad.add_wf(wf)
 
-        # 🟢 Launch 1 task at a time until all are done
         run_rapidfire_until_complete(launchpad, generation_str)
+
+        # Clean up launcher folders AFTER the whole generation is finished
+        cleanup_launcher_folders()
 
         fitness_values = load_fitness_values(param_file, generation_id)
         parameter_sets = pm.read_parameters_for_generation(generation_str)
