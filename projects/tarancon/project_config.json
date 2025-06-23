@@ -33,7 +33,7 @@
       "b": [0.5, 5.0],
       "delta": [0.0, 6.283185307179586]
     },
-    "population_size": 5,
+    "population_size": 10,
     "max_generations": 10,
     "differential_evolution": {
       "mutation_factor": 0.8,
