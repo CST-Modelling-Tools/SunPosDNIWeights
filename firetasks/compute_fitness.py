@@ -10,7 +10,7 @@ import csv
 class ComputeFitnessFiretask(FiretaskBase):
     required_params = [
         "project_root", "generation_id", "parameters", "layout_file",
-        "tonatiuh_exe", "tonatiuh_script", "energy_exe"
+        "tonatiuh_exe", "tonatiuh_script", "energy_exe", "directions_file"
     ]
 
     def run_task(self, fw_spec):
@@ -41,28 +41,37 @@ class ComputeFitnessFiretask(FiretaskBase):
         tn_template_script = Path(self["tonatiuh_script"]).resolve()
         energy_exe = Path(self["energy_exe"]).resolve()
 
+        directions_file = Path(self["directions_file"]).resolve()
+
         simulate_script_text = tn_template_script.read_text()
 
+        # Compute relative paths for portability
         relative_layout_path = layout_file.relative_to(population_dir).as_posix()
+        relative_output_path = efficiency_file.relative_to(population_dir).as_posix()
+        directions_file = (project_root / self["directions_file"]).resolve()
+        relative_directions_file = os.path.relpath(directions_file, start=population_dir).replace("\\", "/")
 
-        simulate_script_text = simulate_script_text.replace(
-            'generateHeliostatFieldFromCSV(field, "LAYOUT_PATH_PLACEHOLDER");',
-            f'generateHeliostatFieldFromCSV(field, "{relative_layout_path}");'
-        )
 
+        # Replace all placeholders in the template
         simulate_script_text = simulate_script_text.replace(
-            'const outputPath = "OUTPUT_PATH_PLACEHOLDER";',
-            f'const outputPath = "{efficiency_file.as_posix()}";'
+            "LAYOUT_PATH_PLACEHOLDER", f"{relative_layout_path}"
+        ).replace(
+            "OUTPUT_PATH_PLACEHOLDER", f"{relative_output_path}"
+        ).replace(
+            "INPUT_DIRECTIONS_PATH_PLACEHOLDER", f"{relative_directions_file}"
         )
 
         script_file.write_text(simulate_script_text)
-        print(f"Writing to: {script_file}")
+        print(f"Tonatiuh++ script written to: {script_file}")
 
+        # Run Tonatiuh++
         subprocess.run([str(tn_exe), "-i", str(script_file)], cwd=str(script_file.parent), check=True)
 
+        # Run annual energy computation
         subprocess.run([str(energy_exe), str(efficiency_file), str(energy_output_file)],
                        cwd=str(project_root), check=True)
 
+        # Read fitness value from last line of output file
         with open(energy_output_file, 'r') as f:
             last_line = f.readlines()[-1].strip()
             if last_line.startswith("average_optical_efficiency"):
@@ -70,6 +79,7 @@ class ComputeFitnessFiretask(FiretaskBase):
             else:
                 raise ValueError(f"Unexpected format in fitness file: {last_line}")
 
+        # Log parameter set and fitness value
         param_sets_file = project_root / "results" / "parameter_sets.csv"
         with open(param_sets_file, "a", newline="") as f:
             writer = csv.writer(f)

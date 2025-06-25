@@ -116,7 +116,8 @@ def run_optimization_cycle(config_path_str):
                 "receiver_height": pm.receiver_height,
                 "tonatiuh_exe": str(pm.tonatiuh_exe),
                 "tonatiuh_script": str(pm.tonatiuh_script),
-                "energy_exe": str(pm.energy_exe)
+                "energy_exe": str(pm.energy_exe),
+                "directions_with_weights_file": pm.config["data"]["directions_with_weights_file"]  # Pass directly as string 
             }
         )
 

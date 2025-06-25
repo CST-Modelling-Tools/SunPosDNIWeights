@@ -19,9 +19,6 @@ def get_optimize_generation_workflow(project_root: Path, parameter_population: l
         population_dir.mkdir(parents=True, exist_ok=True)
 
         layout_file = population_dir / f"{prefix}_layout.csv"
-        script_file = population_dir / f"{prefix}.tnhpps"
-        efficiency_file = population_dir / f"{prefix}_efficiency.csv"
-        fitness_file = population_dir / f"{prefix}_fitness.csv"
 
         # Shared spec dictionary
         common_spec = {
@@ -46,12 +43,10 @@ def get_optimize_generation_workflow(project_root: Path, parameter_population: l
                         "generation_id": gen_id,
                         "parameters": p,
                         "layout_file": str(layout_file),
-                        "script_file": str(script_file),
-                        "efficiency_file": str(efficiency_file),
-                        "fitness_file": str(fitness_file),
                         "tonatiuh_exe": config["tonatiuh_exe"],
                         "tonatiuh_script": config["tonatiuh_script"],
-                        "energy_exe": config["energy_exe"]
+                        "energy_exe": config["energy_exe"],
+                        "directions_file": config["directions_with_weights_file"]
                     }
                 )
             ],
