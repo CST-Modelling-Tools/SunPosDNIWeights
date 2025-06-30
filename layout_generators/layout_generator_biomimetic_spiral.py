@@ -1,9 +1,12 @@
+# File: layout_generators/layout_generator_biomimetic_spiral.py
+
 import numpy as np
 from pathlib import Path
 import math
 import csv
+from layout_generators.parametric_layout_generator import ParametricLayoutGenerator
 
-class BiomimeticSpiralGenerator:
+class BiomimeticSpiralGenerator(ParametricLayoutGenerator):
     def __init__(self, num_heliostats: int, bubble_radius: float, receiver_height: float):
         self.num_heliostats = num_heliostats
         self.bubble_radius = bubble_radius
@@ -26,7 +29,7 @@ class BiomimeticSpiralGenerator:
             r = a0 + b * angle
             x = r * math.cos(angle + delta)
             y = r * math.sin(angle + delta)
-            z = 0.0  # ground level
+            z = 0.0
 
             if y < 0:
                 angle += math.radians(1)

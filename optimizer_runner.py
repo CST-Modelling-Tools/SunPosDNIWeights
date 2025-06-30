@@ -3,31 +3,41 @@
 import sys
 import json
 import csv
-import time
 import subprocess
 import shutil
 from pathlib import Path
 from importlib.util import spec_from_file_location, module_from_spec
-from importlib import import_module
 from fireworks import LaunchPad
 from firetasks.create_population_folder import CreateNextPopulationFolderFiretask
 from workflows.workflow_optimize_generation import get_optimize_generation_workflow
 
-def load_module_from_path(name, path):
-    spec = spec_from_file_location(name, path)
+
+def load_project_manager(config_path):
+    project_dir = config_path.parent
+    project_manager_path = project_dir / "project_manager.py"
+
+    if not project_manager_path.exists():
+        raise FileNotFoundError(f"Expected project_manager.py in {project_dir}, but not found.")
+
+    spec = spec_from_file_location("project_manager", project_manager_path)
     module = module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module
+
+    return module.ProjectManager(config_path)
+
 
 def load_optimizer(class_path, config):
+    from importlib import import_module
     module_path, class_name = class_path.rsplit(".", 1)
     module = import_module(module_path)
     return getattr(module, class_name)(**config)
+
 
 def check_generation_status(launchpad: LaunchPad, generation_id: str):
     fw_ids = launchpad.get_fw_ids({"spec._generation_id": generation_id})
     states = [launchpad.get_fw_by_id(fw_id).state for fw_id in fw_ids]
     return states
+
 
 def run_rapidfire_until_complete(launchpad: LaunchPad, generation_id: str):
     print(f"[INFO] Processing generation {generation_id} with repeated rapidfire launches...")
@@ -49,6 +59,7 @@ def run_rapidfire_until_complete(launchpad: LaunchPad, generation_id: str):
 
         subprocess.run(["rlaunch", "rapidfire", "--nlaunches", "1"], check=True)
 
+
 def cleanup_launcher_folders():
     current_dir = Path.cwd()
     for folder in current_dir.glob("launcher_*"):
@@ -57,6 +68,7 @@ def cleanup_launcher_folders():
             print(f"[INFO] Deleted launcher folder: {folder}")
         except Exception as e:
             print(f"[WARNING] Could not delete launcher folder {folder}: {e}")
+
 
 def load_fitness_values(parameter_sets_file, generation_id):
     fitness = []
@@ -67,13 +79,11 @@ def load_fitness_values(parameter_sets_file, generation_id):
                 fitness.append(float(row["fitnessValue"]))
     return fitness
 
+
 def run_optimization_cycle(config_path_str):
     config_path = Path(config_path_str).resolve()
-    project_root = config_path.parent
 
-    sys.path.insert(0, str(Path(__file__).parent))
-    from projects.tarancon.project_manager import ProjectManager
-    pm = ProjectManager(config_path)
+    pm = load_project_manager(config_path)
 
     param_file = pm.parameter_sets_file
     if not param_file.exists():
@@ -114,10 +124,11 @@ def run_optimization_cycle(config_path_str):
                 "num_heliostats": pm.num_heliostats,
                 "bubble_radius": pm.bubble_radius,
                 "receiver_height": pm.receiver_height,
+                "receiver_radial_distance": getattr(pm, "receiver_radial_distance", None),
                 "tonatiuh_exe": str(pm.tonatiuh_exe),
                 "tonatiuh_script": str(pm.tonatiuh_script),
                 "energy_exe": str(pm.energy_exe),
-                "directions_with_weights_file": pm.config["data"]["directions_with_weights_file"]  # Pass directly as string 
+                "directions_with_weights_file": pm.config["data"]["directions_with_weights_file"]
             }
         )
 
@@ -125,7 +136,6 @@ def run_optimization_cycle(config_path_str):
 
         run_rapidfire_until_complete(launchpad, generation_str)
 
-        # Clean up launcher folders AFTER the whole generation is finished
         cleanup_launcher_folders()
 
         fitness_values = load_fitness_values(param_file, generation_id)
@@ -138,6 +148,7 @@ def run_optimization_cycle(config_path_str):
         generation_id += 1
 
     print(">>> Optimization finished.")
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:

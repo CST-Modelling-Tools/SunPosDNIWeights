@@ -34,7 +34,8 @@ def get_optimize_generation_workflow(project_root: Path, parameter_population: l
                         "output_layout_file": str(layout_file),
                         "num_heliostats": config["num_heliostats"],
                         "bubble_radius": config["bubble_radius"],
-                        "receiver_height": config["receiver_height"]
+                        "receiver_height": config["receiver_height"],
+                        "receiver_radial_distance": config["receiver_radial_distance"]
                     }
                 ),
                 ComputeFitnessFiretask(

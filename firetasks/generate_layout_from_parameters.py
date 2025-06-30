@@ -7,15 +7,16 @@ from layout_generators.layout_generator_factory import get_layout_generator
 @explicit_serialize
 class GenerateLayoutFromParametersFiretask(FiretaskBase):
     required_params = [
-        "generator_type",       # e.g., "biomimetic_spiral"
+        "generator_type",       # e.g., "biomimetic_spiral" or "octagon_biomimetic_spiral"
         "parameters",           # list or dict
         "output_layout_file",   # path to generated CSV file
-        "num_heliostats",       # e.g., 223
-        "bubble_radius"         # e.g., 4.5
+        "num_heliostats",       # e.g., 290
+        "bubble_radius"         # e.g., 2.4
     ]
 
     optional_params = [
-        "receiver_height"       # default = 35.0
+        "receiver_height",          # default = 35.0
+        "receiver_radial_distance"  # optional, needed for octagon generator
     ]
 
     def run_task(self, fw_spec):
@@ -32,21 +33,33 @@ class GenerateLayoutFromParametersFiretask(FiretaskBase):
         num_heliostats = int(self["num_heliostats"])
         bubble_radius = float(self["bubble_radius"])
         receiver_height = float(self.get("receiver_height", 35.0))
+        receiver_radial_distance = self.get("receiver_radial_distance", None)
 
-        # Get generator class and instantiate
+        # Get generator class from factory
         GeneratorClass = get_layout_generator(generator_type)
-        generator = GeneratorClass(
-            num_heliostats=num_heliostats,
-            bubble_radius=bubble_radius,
-            receiver_height=receiver_height
-        )
+
+        # Select generator type and initialize with correct parameters
+        if generator_type == "octagon_biomimetic_spiral":
+            if receiver_radial_distance is None:
+                raise ValueError("receiver_radial_distance must be provided for octagon layout.")
+            generator = GeneratorClass(
+                num_heliostats=num_heliostats,
+                bubble_radius=bubble_radius,
+                receiver_height=receiver_height,
+                receiver_radial_distance=receiver_radial_distance
+            )
+        else:
+            generator = GeneratorClass(
+                num_heliostats=num_heliostats,
+                bubble_radius=bubble_radius,
+                receiver_height=receiver_height
+            )
 
         # Generate layout file
         try:
             generator.generate_layout(output_file=output_file, parameters=parameters)
         except RuntimeError as e:
             print(f"[WARNING] Skipping layout due to generation error: {e}")
-            # Mark layout as invalid by not creating a file
             return FWAction()
 
         return FWAction()

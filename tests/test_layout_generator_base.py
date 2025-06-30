@@ -1,7 +1,7 @@
 # tests/test_layout_generator_base.py
 
 import pytest
-from layout_generators.layout_generator_base import ParametricLayoutGenerator
+from layout_generators.parametric_layout_generator import ParametricLayoutGenerator
 from pathlib import Path
 from abc import ABCMeta
 
