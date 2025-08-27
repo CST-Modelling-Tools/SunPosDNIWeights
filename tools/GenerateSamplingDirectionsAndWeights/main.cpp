@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
     double totalDNI = 0.0;
 
     for (const auto& [time, dni] : dniSeries.getTimeSeries()) {
-        Eigen::Vector3d sunDir = SunPosition::getSunDirection(time, latitude_deg, 0.0);  // longitude ignored here
+        Eigen::Vector3d sunDir = SunPosition::getSunDirection(time, latitude_deg, longitude_deg);  // longitude ignored here
         if (sunDir.z() <= 0.0) continue;
 
         totalDNI += dni;

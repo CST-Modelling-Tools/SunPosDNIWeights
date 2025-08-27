@@ -36,7 +36,7 @@ double Interpolator::interpolate(const Eigen::Vector3d& sunDir) const {
 std::vector<std::function<double(const Eigen::Vector3d)>> Interpolator::getLocalizedKernels() const {
     std::vector<std::function<double(const Eigen::Vector3d)>> localKernels;
     for (size_t p = 0; p < nodes.size(); ++p) {
-        localKernels.push_back([=](const Eigen::Vector3d& r) {
+        localKernels.push_back([=, this](const Eigen::Vector3d& r) {
             double sum = 0.0;
             for (size_t q = 0; q < nodes.size(); ++q)
                 sum += kernelMatrixInverse(p, q) * kernelFunction((r - nodes[q]).norm());

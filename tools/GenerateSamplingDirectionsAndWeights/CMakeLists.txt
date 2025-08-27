@@ -9,11 +9,12 @@ target_link_libraries(GenerateSamplingDirectionsAndWeights
         polyharmonic_core
 )
 
+# Prevent Windows macro conflict
 target_compile_definitions(GenerateSamplingDirectionsAndWeights PRIVATE NOMINMAX)
 
-# Optional: add path to Eigen if needed (if not already handled globally)
+# Add Eigen and local headers
 target_include_directories(GenerateSamplingDirectionsAndWeights
     PRIVATE
         ${CMAKE_SOURCE_DIR}/include
-        ${EIGEN3_INCLUDE_DIR}
+        ${Eigen3_INCLUDE_DIRS}
 )
