@@ -1,32 +1,75 @@
-import sys
+# File: tests/test_project_manager.py
+
+import pytest
 from pathlib import Path
-import math
-
-# Add repo root to sys.path so imports from 'projects' work
-repo_root = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(repo_root))
-
-# Import the ProjectManager
-from projects.tarancon.project_manager import ProjectManager
+from utils.project_manager import ProjectManager
 
 
-def test_project_manager_basic_loading():
-    config_path = repo_root / "projects" / "tarancon" / "project_config.json"
-    manager = ProjectManager(config_path)
+@pytest.fixture(scope="module")
+def project_manager():
+    config_path = Path("tests/data/project_config.json").resolve()
+    return ProjectManager(config_path)
 
-    assert manager.project_name == "tarancon_spain"
-    assert math.isclose(manager.latitude, 39.872)
-    assert math.isclose(manager.longitude, -3.01)
 
-    assert manager.num_heliostats == 223
-    assert math.isclose(manager.bubble_radius, 4.5)
-    assert math.isclose(manager.receiver_height, 35.0)
-    assert manager.population_size == 10
-    assert manager.max_generations == 50
+def test_project_manager_initialization(project_manager):
+    assert project_manager.project_name == "hyder_arizona_staggered_layout"
+    assert project_manager.location["latitude"] == 33.024436
+    assert project_manager.location["longitude"] == -113.381777
 
-    assert math.isclose(manager.mutation_factor, 0.8)
-    assert math.isclose(manager.crossover_rate, 0.9)
 
-    assert manager.parameter_bounds["a0"] == [5.0, 20.0]
-    assert manager.parameter_bounds["b"] == [0.5, 5.0]
-    assert manager.parameter_bounds["delta"] == [0.0, 2 * math.pi]
+def test_get_optimizable_keys(project_manager):
+    keys = project_manager.get_optimizable_keys()
+    expected_keys = ["receiver_height", "flat_receiver_radius", "d0", "alpha", "a0", "gamma"]
+    assert set(keys) == set(expected_keys)
+
+
+def test_get_bounds_dict(project_manager):
+    bounds = project_manager.get_bounds_dict()
+    assert bounds["receiver_height"] == [70.0, 90.0]
+    assert bounds["gamma"] == [0.0, 0.02]
+
+
+def test_get_fixed_parameters(project_manager):
+    fixed = project_manager.get_fixed_parameters()
+    assert fixed["num_heliostats"] == 6500
+    assert fixed["north_only"] is True
+
+
+def test_build_parameter_dict(project_manager):
+    x = [75.0, 1.2, 6.0, 0.1, 0.5, 0.01]
+    full_params = project_manager.build_parameter_dict(x)
+    assert full_params["receiver_height"] == 75.0
+    assert full_params["flat_receiver_radius"] == 1.2
+    assert full_params["num_heliostats"] == 6500  # fixed param
+
+
+def test_get_optimization_parameters(project_manager):
+    params = project_manager.get_optimization_parameters()
+    assert params["population_size"] == 10
+    assert params["crossover_rate"] == 0.6
+
+
+def test_executable_paths(project_manager):
+    assert "Tonatiuh" in project_manager.get_tonatiuh_exe()
+    assert project_manager.get_energy_exe().endswith("AnnualEnergy")
+    assert project_manager.get_sampling_exe().endswith("GenerateSamplingDirectionsAndWeights")
+
+
+def test_paths_and_folders(project_manager):
+    assert project_manager.get_dni_file().endswith(".csv")
+    assert project_manager.get_directions_file().endswith(".csv")
+    assert project_manager.get_results_folder() == "results"
+    assert project_manager.get_workflows_dir() == "../../workflows"
+
+
+def test_read_parameters_for_generation(project_manager):
+    gen_000 = project_manager.read_parameters_for_generation("000")
+    assert isinstance(gen_000, list)
+    assert len(gen_000) == 1
+    assert gen_000[0]["receiver_height"] == 80.0
+    assert gen_000[0]["gamma"] == 0.01
+
+
+def test_receiver_and_field_types(project_manager):
+    assert project_manager.get_receiver_type() == "flat"
+    assert project_manager.get_field_geometry_type() == "polar"

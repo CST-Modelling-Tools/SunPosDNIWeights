@@ -1,3 +1,5 @@
+# File: optimizers/differential_evolution_optimizer.py
+
 import random
 from typing import List, Dict
 from .metaheuristic_optimizer import MetaheuristicOptimizer
@@ -25,9 +27,10 @@ class DifferentialEvolutionOptimizer(MetaheuristicOptimizer):
             for _ in range(self.population_size)
         ]
 
-    def suggest(self, generation_id: int) -> List[Dict]:
+    def suggest(self) -> List[Dict]:
+        """Suggest parameter sets for the next generation."""
         if self.generation == 0:
-            return self.population  # Initial generation is already initialized
+            return self.population  # initial population
 
         suggestions = []
         for i in range(self.population_size):
@@ -46,22 +49,22 @@ class DifferentialEvolutionOptimizer(MetaheuristicOptimizer):
                     trial[key] = max(min_val, min(max_val, mutated_value))
                 else:
                     trial[key] = self.population[i][key]
-
             suggestions.append(trial)
 
         return suggestions
 
     def update(self, evaluated_population: List[Dict]):
+        """Update population with evaluated fitnesses."""
         for i, candidate in enumerate(evaluated_population):
             new_fitness = candidate["fitness"]
-            new_parameters = candidate["parameters"]  # Extract only the parameter dict
+            new_parameters = candidate["parameters"]
 
             if self.fitnesses[i] is None or new_fitness > self.fitnesses[i]:
-                self.population[i] = new_parameters  # Replace with better candidate
+                self.population[i] = new_parameters
                 self.fitnesses[i] = new_fitness
 
         self.generation += 1
 
-
-    def is_done(self, generation_id=None, max_generations=None) -> bool:
+    def is_done(self) -> bool:
+        """Stop when max_generations is reached."""
         return self.generation >= self.max_generations

@@ -5,84 +5,119 @@ from fireworks import FiretaskBase, explicit_serialize, FWAction
 import subprocess
 import os
 import csv
+from utils.project_manager import ProjectManager
+
 
 @explicit_serialize
 class ComputeFitnessFiretask(FiretaskBase):
     required_params = [
-        "project_root", "generation_id", "parameters", "layout_file",
-        "tonatiuh_exe", "tonatiuh_script", "energy_exe", "directions_file"
+        "project_root",
+        "generation_id",
+        "candidate_id",
+        "candidate_tag",
+        "parameters",
+        "layout_file",
+        "tnhpps_file",
+        "efficiency_file",
+        "fitness_file",
+        "tonatiuh_exe",
+        "tonatiuh_script",
+        "energy_exe",
+        "directions_file",
+        "generator_type",
     ]
 
     def run_task(self, fw_spec):
         project_root = Path(self["project_root"]).resolve()
         generation_id = self["generation_id"]
+        candidate_id = self["candidate_id"]
+        candidate_tag = self["candidate_tag"]
         parameters = self["parameters"]
+
         layout_file = Path(self["layout_file"]).resolve()
+        tnhpps_file = Path(self["tnhpps_file"]).resolve()
+        efficiency_file = Path(self["efficiency_file"]).resolve()
+        fitness_file = Path(self["fitness_file"]).resolve()
 
         if not layout_file.exists():
             print(f"[WARNING] Skipping fitness computation because layout file does not exist: {layout_file}")
             return FWAction()
 
-        a0 = parameters["a0"]
-        b = parameters["b"]
-        delta = parameters["delta"]
-
-        layout_id = f"{generation_id}_{a0:.2f}_{b:.2f}_{delta:.2f}".replace('.', 'p')
-        file_prefix = f"ps_{layout_id}"
-
-        population_dir = project_root / "results" / f"population_{generation_id}"
-        population_dir.mkdir(parents=True, exist_ok=True)
-
-        script_file = population_dir / f"{file_prefix}.tnhpps"
-        efficiency_file = population_dir / f"{file_prefix}_efficiency.csv"
-        energy_output_file = population_dir / f"{file_prefix}_fitness.csv"
-
         tn_exe = Path(self["tonatiuh_exe"]).resolve()
-        tn_template_script = Path(self["tonatiuh_script"]).resolve()
+        tn_template_script = (project_root / self["tonatiuh_script"]).resolve()
         energy_exe = Path(self["energy_exe"]).resolve()
 
-        directions_file = Path(self["directions_file"]).resolve()
-
-        simulate_script_text = tn_template_script.read_text()
-
-        # Compute relative paths for portability
-        relative_layout_path = layout_file.relative_to(population_dir).as_posix()
-        relative_output_path = efficiency_file.relative_to(population_dir).as_posix()
+        # relative paths (Tonatiuh++ expects paths relative to .tnhpps location)
         directions_file = (project_root / self["directions_file"]).resolve()
-        relative_directions_file = os.path.relpath(directions_file, start=population_dir).replace("\\", "/")
+        rel_directions = os.path.relpath(directions_file, start=tnhpps_file.parent).replace("\\", "/")
+        rel_layout = layout_file.relative_to(tnhpps_file.parent).as_posix()
+        rel_efficiency = efficiency_file.relative_to(tnhpps_file.parent).as_posix()
 
-
-        # Replace all placeholders in the template
-        simulate_script_text = simulate_script_text.replace(
-            "LAYOUT_PATH_PLACEHOLDER", f"{relative_layout_path}"
-        ).replace(
-            "OUTPUT_PATH_PLACEHOLDER", f"{relative_output_path}"
-        ).replace(
-            "INPUT_DIRECTIONS_PATH_PLACEHOLDER", f"{relative_directions_file}"
+        # 🔹 Fill placeholders in Tonatiuh++ script template
+        script_text = tn_template_script.read_text()
+        script_text = (
+            script_text
+            .replace("LAYOUT_PATH_PLACEHOLDER", rel_layout)
+            .replace("OUTPUT_PATH_PLACEHOLDER", rel_efficiency)
+            .replace("INPUT_DIRECTIONS_PATH_PLACEHOLDER", rel_directions)
         )
+        tnhpps_file.write_text(script_text)
+        print(f"[INFO] Tonatiuh++ script written to: {tnhpps_file}")
 
-        script_file.write_text(simulate_script_text)
-        print(f"Tonatiuh++ script written to: {script_file}")
+        # 🔹 Run Tonatiuh++
+        try:
+            subprocess.run([str(tn_exe), "-i", str(tnhpps_file)],
+                           cwd=str(tnhpps_file.parent), check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"[ERROR] Tonatiuh++ simulation failed for {candidate_tag}: {e}")
+            return FWAction()
 
-        # Run Tonatiuh++
-        subprocess.run([str(tn_exe), "-i", str(script_file)], cwd=str(script_file.parent), check=True)
+        # 🔹 Run annual energy computation
+        try:
+            subprocess.run([str(energy_exe), str(efficiency_file), str(fitness_file)],
+                           cwd=str(project_root), check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"[ERROR] AnnualEnergy computation failed for {candidate_tag}: {e}")
+            return FWAction()
 
-        # Run annual energy computation
-        subprocess.run([str(energy_exe), str(efficiency_file), str(energy_output_file)],
-                       cwd=str(project_root), check=True)
+        # 🔹 Parse fitness value
+        fitness_value = None
+        with open(fitness_file, "r") as f:
+            for line in f:
+                if line.strip().startswith("average_optical_efficiency"):
+                    try:
+                        fitness_value = float(line.split(",")[1])
+                    except (IndexError, ValueError):
+                        raise ValueError(f"Invalid fitness line in {fitness_file}: {line.strip()}")
+        if fitness_value is None:
+            raise ValueError(f"No valid fitness metric found in {fitness_file}")
 
-        # Read fitness value from last line of output file
-        with open(energy_output_file, 'r') as f:
-            last_line = f.readlines()[-1].strip()
-            if last_line.startswith("average_optical_efficiency"):
-                fitness_value = float(last_line.split(",")[1])
-            else:
-                raise ValueError(f"Unexpected format in fitness file: {last_line}")
-
-        # Log parameter set and fitness value
+        # 🔹 Append to parameter_sets.csv
+        pm = ProjectManager(project_root / "project_config.json")
         param_sets_file = project_root / "results" / "parameter_sets.csv"
+        file_exists = param_sets_file.exists()
+
+        ordered_param_keys = pm.get_all_parameter_keys()
+
         with open(param_sets_file, "a", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([generation_id, a0, b, delta, fitness_value])
+            if not file_exists:
+                header = (
+                    ["generation_id", "candidate_id", "candidate_tag"]
+                    + ordered_param_keys
+                    + ["fitnessValue"]
+                )
+                writer.writerow(header)
 
+            # 🔹 Force values in exact header order
+            param_values = []
+            for k in ordered_param_keys:
+                if k not in parameters:
+                    raise KeyError(f"[ERROR] Missing parameter '{k}' in candidate {candidate_tag}")
+                param_values.append(parameters[k])
+
+            row = [generation_id, candidate_id, candidate_tag] + param_values + [fitness_value]
+            writer.writerow(row)
+
+        print(f"[INFO] Candidate {candidate_tag} fitness logged: {fitness_value:.4f}")
         return FWAction()

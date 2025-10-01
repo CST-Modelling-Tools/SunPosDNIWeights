@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SunPosDNI Project Configuration Schema",
+  "type": "object",
+  "required": ["project_name", "location", "data", "executables", "scripts", "folders", "paths", "optimization_config"],
+
+  "properties": {
+    "project_name": { "$ref": "#/definitions/typed_value_string" },
+
+    "location": {
+      "type": "object",
+      "required": ["latitude", "longitude"],
+      "properties": {
+        "latitude": { "$ref": "#/definitions/typed_value_float" },
+        "longitude": { "$ref": "#/definitions/typed_value_float" }
+      }
+    },
+
+    "data": {
+      "type": "object",
+      "required": ["dni_file", "directions_with_weights_file"],
+      "properties": {
+        "dni_file": { "$ref": "#/definitions/typed_value_string" },
+        "directions_with_weights_file": { "$ref": "#/definitions/typed_value_string" }
+      }
+    },
+
+    "executables": {
+      "type": "object",
+      "properties": {
+        "sampling_exe": { "$ref": "#/definitions/typed_value_string" },
+        "tonatiuh_exe": { "$ref": "#/definitions/typed_value_string" },
+        "energy_exe": { "$ref": "#/definitions/typed_value_string" }
+      }
+    },
+
+    "scripts": {
+      "type": "object",
+      "properties": {
+        "tonatiuh_script": { "$ref": "#/definitions/typed_value_string" }
+      }
+    },
+
+    "folders": {
+      "type": "object",
+      "properties": {
+        "results": { "$ref": "#/definitions/typed_value_string" }
+      }
+    },
+
+    "paths": {
+      "type": "object",
+      "properties": {
+        "workflows_dir": { "$ref": "#/definitions/typed_value_string" }
+      }
+    },
+
+    "optimization_config": {
+      "type": "object",
+      "required": ["type", "layout_generator_type", "physical_parameters", "layout_generation_parameters", "optimization_parameters"],
+      "properties": {
+        "type": { "$ref": "#/definitions/typed_value_string" },
+        "layout_generator_type": { "$ref": "#/definitions/typed_value_string" },
+
+        "physical_parameters": {
+          "type": "object",
+          "patternProperties": {
+            "^.*$": { "$ref": "#/definitions/parameter_entry" }
+          }
+        },
+        "layout_generation_parameters": {
+          "type": "object",
+          "patternProperties": {
+            "^.*$": { "$ref": "#/definitions/parameter_entry" }
+          }
+        },
+        "optimization_parameters": {
+          "type": "object",
+          "patternProperties": {
+            "^.*$": { "$ref": "#/definitions/typed_value_any" }
+          }
+        }
+      }
+    }
+  },
+
+  "definitions": {
+    "typed_value_string": {
+      "type": "object",
+      "properties": {
+        "value": { "type": "string" },
+        "type": { "const": "string" }
+      },
+      "required": ["value", "type"]
+    },
+    "typed_value_float": {
+      "type": "object",
+      "properties": {
+        "value": { "type": "number" },
+        "type": { "const": "float" }
+      },
+      "required": ["value", "type"]
+    },
+    "typed_value_any": {
+      "type": "object",
+      "properties": {
+        "value": {},
+        "type": { "type": "string" }
+      },
+      "required": ["value", "type"]
+    },
+    "parameter_entry": {
+      "type": "object",
+      "properties": {
+        "value": {},
+        "type": { "type": "string" },
+        "bounds": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "optimizable": { "type": "boolean" }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    }
+  }
+}
