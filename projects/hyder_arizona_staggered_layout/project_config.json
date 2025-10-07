@@ -103,10 +103,6 @@
     },
 
     "layout_generation_parameters": {
-      "flat_receiver_radius": {
-        "value": 0.865,
-        "type": "float"
-      },
       "beta_deg": {
         "value": 180.0,
         "type": "float"
