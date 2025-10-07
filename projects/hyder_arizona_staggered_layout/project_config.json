@@ -59,6 +59,7 @@
       "type": "string"
     }
   },
+
   "optimization_config": {
     "type": {
       "value": "differential_evolution",
@@ -68,6 +69,7 @@
       "value": "radial_staggered",
       "type": "string"
     },
+
     "physical_parameters": {
       "num_heliostats": {
         "value": 250,
@@ -99,28 +101,32 @@
         "type": "bool"
       }
     },
+
     "layout_generation_parameters": {
-      "d0": {
-        "bounds": [4.0, 10.0],
+      "flat_receiver_radius": {
+        "value": 0.865,
+        "type": "float"
+      },
+      "beta_deg": {
+        "value": 180.0,
+        "type": "float"
+      },
+      "delta": {
+        "value": 0.0,
+        "type": "float"
+      },
+      "packing": {
+        "bounds": [0.4, 0.9],
         "type": "float",
         "optimizable": true
       },
-      "alpha": {
-        "bounds": [0.0, 0.2],
-        "type": "float",
-        "optimizable": true
-      },
-      "a0": {
-        "bounds": [0.2, 1.0],
-        "type": "float",
-        "optimizable": true
-      },
-      "gamma": {
-        "bounds": [0.0, 0.02],
+      "inner_bias": {
+        "bounds": [0.0, 1.0],
         "type": "float",
         "optimizable": true
       }
     },
+
     "optimization_parameters": {
       "population_size": {
         "value": 200,

@@ -6,31 +6,47 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # ------------------------------------------------------------------------------------
-# Cross-platform Eigen detection
+# Eigen3 detection
 # ------------------------------------------------------------------------------------
-# Try to find Eigen3 via system config or user-provided path
-find_package(Eigen3 QUIET NO_MODULE)
+find_package(Eigen3 3.3 QUIET NO_MODULE)
 
-if (NOT Eigen3_FOUND)
-    message(STATUS "Eigen3 not found via find_package. Falling back to manual path.")
-
-    # Let the user override the Eigen path manually (Windows or custom installs)
-    set(EIGEN3_INCLUDE_DIR "C:/eigen" CACHE PATH "Path to Eigen include directory")
-    if (EXISTS "${EIGEN3_INCLUDE_DIR}/Eigen")
-        set(Eigen3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
-    else()
-        message(FATAL_ERROR "Could not find Eigen3. Please install it or set EIGEN3_INCLUDE_DIR.")
-    endif()
+if (Eigen3_FOUND)
+    message(STATUS "Eigen3 found via find_package at: ${EIGEN_INCLUDE_DIR}")
 else()
-    message(STATUS "Eigen3 found via find_package.")
-    set(Eigen3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIRS})
+    message(STATUS "Eigen3 not found via find_package. Using manual path.")
+    
+    # Try to get path from environment variable first
+    if (DEFINED ENV{EIGEN_INCLUDE_DIR})
+        set(EIGEN_INCLUDE_DIR "$ENV{EIGEN_INCLUDE_DIR}" CACHE PATH "Path to Eigen include directory")
+        message(STATUS "Using EIGEN_INCLUDE_DIR from environment variable: ${EIGEN_INCLUDE_DIR}")
+    else()
+        # If environment variable not set, allow CMake configuration to override
+        set(EIGEN_INCLUDE_DIR "" CACHE PATH "Path to Eigen include directory")
+    endif()
+    
+    if (NOT EIGEN_INCLUDE_DIR)
+        message(FATAL_ERROR "Could not find Eigen3. Please either:\n"
+                            "  1. Set the EIGEN_INCLUDE_DIR environment variable, or\n"
+                            "  2. Pass -DEIGEN_INCLUDE_DIR=/path/to/eigen to CMake, or\n"
+                            "  3. Install Eigen where CMake can find it via find_package()")
+    endif()
+    
+    if (EXISTS "${EIGEN_INCLUDE_DIR}/Eigen/Core")
+        message(STATUS "Eigen manually located at: ${EIGEN_INCLUDE_DIR}")
+    else()
+        message(FATAL_ERROR "EIGEN_INCLUDE_DIR is set to '${EIGEN_INCLUDE_DIR}', but Eigen/Core was not found there.\n"
+                            "Please verify the path points to the Eigen root directory.")
+    endif()
+    
+    # Create an imported target for consistency
+    add_library(Eigen3::Eigen INTERFACE IMPORTED)
+    set_target_properties(Eigen3::Eigen PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${EIGEN_INCLUDE_DIR}"
+    )
 endif()
 
-# Make Eigen3 include directory available to all targets
-include_directories(SYSTEM ${Eigen3_INCLUDE_DIRS})
-
 # ------------------------------------------------------------------------------------
-# Add external and internal components
+# Add subdirectories
 # ------------------------------------------------------------------------------------
 add_subdirectory(external/sunpos)
 add_subdirectory(src)
