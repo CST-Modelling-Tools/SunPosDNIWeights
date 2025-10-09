@@ -9,31 +9,44 @@ from pathlib import Path
 def get_optimize_generation_workflow(
     project_root: Path,
     parameter_population: list[dict],
-    project_manager
+    project_manager,
+    generator_type: str | None = None
 ) -> Workflow:
     """
-    Build a FireWorks workflow to evaluate a population of layout parameters.
+    Build a FireWorks workflow to evaluate a generation of layout parameters.
+
+    Each candidate is evaluated through:
+        GenerateLayoutFromParametersFiretask → ComputeFitnessFiretask
 
     Args:
-        project_root (Path): Path to the root of the project.
-        parameter_population (list): List of dicts with
+        project_root (Path): Root of the project directory.
+        parameter_population (list[dict]): Each entry contains
             - generation_id
             - candidate_id
             - candidate_tag
-            - parameters
-        project_manager: Instance of ProjectManager to access configuration.
+            - parameters (dict of numerical values)
+        project_manager (ProjectManager): Provides paths and configuration.
+        generator_type (str, optional): Layout generator type override.
 
     Returns:
-        Workflow: A FireWorks Workflow object containing layout generation and fitness evaluation steps.
+        Workflow: A FireWorks Workflow object representing this generation.
     """
     assert parameter_population, "Empty parameter_population passed to workflow builder."
 
-    fireworks = []
+    # Layout generator name (explicit override or from config)
+    generator_type = generator_type or project_manager.get_layout_generator_type()
 
-    generator_type = project_manager.get_layout_generator_type()
-    fixed_params = project_manager.get_fixed_parameters()
-    num_heliostats = fixed_params["num_heliostats"]
-    bubble_radius = fixed_params["bubble_radius"]
+    # Physical parameters (non-optimizable values)
+    physical_params = project_manager.get_flat_physical_parameters()
+    num_heliostats = physical_params.get("num_heliostats")
+    bubble_radius = physical_params.get("bubble_radius")
+    min_tower_clearance = physical_params.get("min_tower_clearance")
+    receiver_height = physical_params.get("receiver_height", None)
+
+    # Project acronym for consistent tagging
+    project_acronym = project_manager.config["project_acronym"]["value"]
+
+    fireworks = []
 
     for param_set in parameter_population:
         gen_id = param_set["generation_id"]
@@ -41,26 +54,30 @@ def get_optimize_generation_workflow(
         cand_tag = param_set["candidate_tag"]
         full_parameters = param_set["parameters"]
 
-        # Directory for this generation
+        # Create generation directory if missing
         population_dir = project_root / "results" / f"population_{gen_id}"
         population_dir.mkdir(parents=True, exist_ok=True)
 
-        # File names follow new convention
+        # File naming consistent with new convention
         layout_file = population_dir / f"{cand_tag}_layout.csv"
         tnhpps_file = population_dir / f"{cand_tag}.tnhpps"
         efficiency_file = population_dir / f"{cand_tag}_efficiency.csv"
         fitness_file = population_dir / f"{cand_tag}_fitness.csv"
 
-        # 🔹 Spec for layout generation
+        # -------------------- Layout Generation Step --------------------
         generate_spec = {
             "generator_type": generator_type,
             "parameters": full_parameters,
             "layout_file": str(layout_file),
             "num_heliostats": num_heliostats,
             "bubble_radius": bubble_radius,
+            "receiver_height": receiver_height,
+            "min_tower_clearance": min_tower_clearance,
+            "project_root": str(project_root),
+            "candidate_tag": cand_tag,
         }
 
-        # 🔹 Spec for fitness computation
+        # -------------------- Fitness Evaluation Step --------------------
         compute_spec = {
             "project_root": str(project_root),
             "generation_id": gen_id,
@@ -76,6 +93,7 @@ def get_optimize_generation_workflow(
             "energy_exe": str(project_manager.get_energy_exe()),
             "directions_file": str(project_manager.get_directions_file()),
             "generator_type": generator_type,
+            "project_acronym": project_acronym,
         }
 
         firework = Firework(
@@ -84,12 +102,12 @@ def get_optimize_generation_workflow(
                 ComputeFitnessFiretask(compute_spec),
             ],
             name=f"Evaluate {cand_tag}",
-            spec={"_generation_id": gen_id},
+            spec={"_generation_id": gen_id, "_generator_type": generator_type},
         )
 
         fireworks.append(firework)
 
     return Workflow(
         fireworks,
-        name=f"Evaluate Generation {parameter_population[0]['generation_id']}"
+        name=f"Evaluate Generation {parameter_population[0]['generation_id']}",
     )

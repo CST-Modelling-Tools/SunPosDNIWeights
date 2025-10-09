@@ -6,6 +6,8 @@ import csv
 from jsonschema import validate, ValidationError
 
 
+# -------------------- Helper Functions --------------------
+
 def extract_value(entry):
     if isinstance(entry, dict):
         return entry.get("value")
@@ -28,17 +30,32 @@ def extract_type(entry):
     return type(entry).__name__
 
 
+# -------------------- ProjectManager --------------------
+
 class ProjectManager:
+    """
+    Manages the project configuration, paths, and parameter metadata.
+
+    Compatible with structured project_config.json containing:
+      - physical_parameters
+      - layout_generation_parameters
+      - optimization_parameters
+
+    Supports mixed optimizable/fixed parameters for parametric layout generators
+    such as 'radial_staggered'.
+    """
+
     def __init__(self, config_path):
         self.config_path = Path(config_path).resolve()
-        with open(self.config_path, 'r') as f:
+        with open(self.config_path, "r") as f:
             self.config = json.load(f)
 
+        # Validate configuration against schema
         schema_path = Path(__file__).parent.parent / "utils" / "schemas" / "project_config_schema.json"
         if not schema_path.exists():
             raise FileNotFoundError(f"Schema file not found at {schema_path}")
 
-        with open(schema_path, 'r') as schema_file:
+        with open(schema_path, "r") as schema_file:
             schema = json.load(schema_file)
 
         try:
@@ -46,11 +63,11 @@ class ProjectManager:
         except ValidationError as e:
             raise ValueError(f"Configuration file validation failed: {e.message}")
 
-        # Top-level config keys
+        # Top-level sections
         self.project_name = extract_value(self.config["project_name"])
         self.location = {
             "latitude": extract_value(self.config["location"]["latitude"]),
-            "longitude": extract_value(self.config["location"]["longitude"])
+            "longitude": extract_value(self.config["location"]["longitude"]),
         }
         self.data_paths = {k: extract_value(v) for k, v in self.config["data"].items()}
         self.executables = {k: extract_value(v) for k, v in self.config["executables"].items()}
@@ -63,7 +80,7 @@ class ProjectManager:
         self.generator_type = extract_value(self.optimization_config["layout_generator_type"])
         self.optimizer_type = extract_value(self.optimization_config["type"])
 
-        # Parameter sections
+        # Parameter subsections
         self.physical_parameters = self.optimization_config.get("physical_parameters", {})
         self.layout_generation_parameters = self.optimization_config.get("layout_generation_parameters", {})
         self.optimization_parameters = {
@@ -77,18 +94,30 @@ class ProjectManager:
 
         self._parse_parameters()
 
+    # -------------------- Parameter Parsing --------------------
+
     def _parse_parameters(self):
-        for section in [self.physical_parameters, self.layout_generation_parameters]:
+        """
+        Populate optimizable keys, bounds, and fixed parameters.
+        Validates presence of proper bounds for all optimizable entries.
+        """
+        for section_name, section in [
+            ("physical_parameters", self.physical_parameters),
+            ("layout_generation_parameters", self.layout_generation_parameters),
+        ]:
             for key, entry in section.items():
                 if is_optimizable(entry):
                     bounds = extract_bounds(entry)
-                    if bounds is not None and len(bounds) == 2:
-                        self._optimizable_keys.append(key)
-                        self._bounds.append(bounds)
+                    if not (isinstance(bounds, list) and len(bounds) == 2):
+                        raise ValueError(
+                            f"Optimizable parameter '{key}' in section '{section_name}' must have a valid [min, max] bounds list."
+                        )
+                    self._optimizable_keys.append(key)
+                    self._bounds.append(bounds)
                 else:
                     self._fixed_values[key] = extract_value(entry)
 
-    # --- Parameter Accessors ---
+    # -------------------- Accessors --------------------
 
     def get_optimizable_keys(self):
         return self._optimizable_keys
@@ -100,43 +129,39 @@ class ProjectManager:
         return dict(zip(self._optimizable_keys, self._bounds))
 
     def get_fixed_parameters(self):
+        """Return fixed (non-optimizable) parameters."""
         return self._fixed_values.copy()
 
     def get_all_parameter_keys(self):
         """
-        Return a consistent ordered list of parameter keys for CSV I/O.
-
-        - Optimizable keys first (in the order defined in config).
-        - Then fixed parameters (sorted for determinism).
+        Return ordered list of all parameter names for CSV / optimizer I/O:
+          - Optimizable keys first (in config order)
+          - Fixed parameters (alphabetically for determinism)
         """
         return self._optimizable_keys + sorted(self._fixed_values.keys())
 
     def build_parameter_dict(self, optimizable_values: dict) -> dict:
         """
-        Merge optimizer-suggested values with fixed parameters from config.
-        Ensures final dict has concrete values, not placeholders.
+        Merge optimizer-suggested values with fixed configuration parameters.
+        Returns a flat dict suitable for generator invocation.
         """
-        merged = {}
-
-        # Start with fixed parameters (always actual values)
-        for key, val in self.get_fixed_parameters().items():
-            merged[key] = val if not isinstance(val, dict) else val.get("value")
-
-        # Add optimizable ones
-        for key, val in optimizable_values.items():
-            merged[key] = val
-
+        merged = {**self.get_fixed_parameters()}
+        merged.update(optimizable_values)
         return merged
 
     def get_flat_physical_parameters(self):
+        """Return all non-optimizable physical parameters."""
         result = {}
         for k, v in self.physical_parameters.items():
-            if is_optimizable(v):
-                continue
-            result[k] = extract_value(v)
+            if not is_optimizable(v):
+                result[k] = extract_value(v)
         return result
 
-    # --- Generator and Optimizer Info ---
+    def get_layout_generation_parameters(self):
+        """Return full layout generation parameter definitions."""
+        return self.layout_generation_parameters.copy()
+
+    # -------------------- Generator & Optimizer Info --------------------
 
     def get_layout_generator_type(self):
         return self.generator_type
@@ -147,7 +172,7 @@ class ProjectManager:
     def get_optimization_parameters(self):
         return self.optimization_parameters
 
-    # --- Executable & Path Accessors ---
+    # -------------------- Executable & Path Accessors --------------------
 
     def get_script_path(self):
         return self.scripts["tonatiuh_script"]
@@ -173,7 +198,7 @@ class ProjectManager:
     def get_workflows_dir(self):
         return self.paths["workflows_dir"]
 
-    # --- Project Structure Utilities ---
+    # -------------------- Project Structure Utilities --------------------
 
     @property
     def root_dir(self):
@@ -187,9 +212,9 @@ class ProjectManager:
         """
         Load parameters (without fitness) for a given generation.
 
-        - Preserves identifiers (generation_id, candidate_id, candidate_tag) as strings.
-        - Converts numeric parameter values to float where possible.
-        - Drops the fitnessValue column.
+        - Preserves identifiers (generation_id, candidate_id, candidate_tag)
+        - Converts numeric strings to float
+        - Omits fitnessValue column
         """
         rows = []
         with open(self.parameter_sets_file, newline="") as f:
@@ -206,11 +231,11 @@ class ProjectManager:
                             try:
                                 cleaned[k] = float(v)
                             except (ValueError, TypeError):
-                                cleaned[k] = v  # keep raw if not convertible
+                                cleaned[k] = v
                     rows.append(cleaned)
         return rows
 
-    # --- Optional: Receiver & Geometry Types ---
+    # -------------------- Optional Info --------------------
 
     def get_receiver_type(self):
         return extract_value(self.config.get("receiver", {}).get("type", "flat"))

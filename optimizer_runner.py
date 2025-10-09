@@ -4,6 +4,7 @@ import sys
 import csv
 import subprocess
 import shutil
+import time
 from pathlib import Path
 from fireworks import LaunchPad
 from firetasks.create_population_folder import CreateNextPopulationFolderFiretask
@@ -13,6 +14,8 @@ import logging
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
+
+# -------------------- Dynamic Optimizer Loader --------------------
 
 def load_optimizer(optimizer_type, config):
     """Dynamically load optimizer class from optimizers package."""
@@ -25,39 +28,48 @@ def load_optimizer(optimizer_type, config):
         module = import_module(module_name)
         return getattr(module, class_name)(**config)
     except Exception as e:
-        raise ImportError(f"Failed to load optimizer {optimizer_type}: {e}")
+        raise ImportError(f"Failed to load optimizer '{optimizer_type}': {e}")
 
+
+# -------------------- FireWorks Utilities --------------------
 
 def check_generation_status(launchpad: LaunchPad, generation_id: str):
     fw_ids = launchpad.get_fw_ids({"spec._generation_id": generation_id})
     return [launchpad.get_fw_by_id(fw_id).state for fw_id in fw_ids]
 
 
-def run_rapidfire_until_complete(launchpad: LaunchPad, generation_id: str, max_nlaunches=1):
+def run_rapidfire_until_complete(launchpad: LaunchPad, generation_id: str, max_nlaunches=1, wait_s=5):
+    """Run FireWorks rapidfire loop until all jobs in the generation are complete."""
     logging.info(f"Processing generation {generation_id} with repeated rapidfire launches...")
 
     while True:
         states = check_generation_status(launchpad, generation_id)
+        total = len(states)
         completed = states.count("COMPLETED")
         fizzled = states.count("FIZZLED")
-        total = len(states)
+        running = states.count("RUNNING")
 
-        logging.info(f"Status: {completed}/{total} COMPLETED | {fizzled} FIZZLED | {states.count('RUNNING')} RUNNING")
+        logging.info(f"Status: {completed}/{total} COMPLETED | {fizzled} FIZZLED | {running} RUNNING")
 
         if fizzled > 0:
             raise RuntimeError(f"{fizzled} FireWorks FIZZLED in generation {generation_id}.")
 
-        if completed == total:
+        if completed == total and total > 0:
             logging.info(f"Generation {generation_id} fully completed.")
             break
 
-        subprocess.run(
-            ["rlaunch", "rapidfire", "--nlaunches", str(max_nlaunches)],
-            check=True
-        )
+        try:
+            subprocess.run(
+                ["rlaunch", "rapidfire", "--nlaunches", str(max_nlaunches)],
+                check=True
+            )
+        except subprocess.CalledProcessError as e:
+            logging.warning(f"Rapidfire execution failed (retrying in {wait_s}s): {e}")
+            time.sleep(wait_s)
 
 
 def cleanup_launcher_folders():
+    """Delete FireWorks temporary launcher_* folders to keep workspace clean."""
     current_dir = Path.cwd()
     for folder in current_dir.glob("launcher_*"):
         try:
@@ -65,6 +77,9 @@ def cleanup_launcher_folders():
             logging.info(f"Deleted launcher folder: {folder}")
         except Exception as e:
             logging.warning(f"Could not delete launcher folder {folder}: {e}")
+
+
+# -------------------- Parameter File Management --------------------
 
 def ensure_param_file(pm: ProjectManager):
     """Ensure parameter_sets.csv exists with proper header (all params)."""
@@ -86,11 +101,12 @@ def ensure_param_file(pm: ProjectManager):
             reader = csv.reader(f)
             try:
                 current_header = next(reader)
-                if current_header != expected_header:
+                # Allow same columns in any order
+                if set(current_header) != set(expected_header):
                     raise ValueError(
                         f"Header mismatch in {param_file}.\n"
-                        f"Expected: {expected_header}\n"
-                        f"Found:    {current_header}"
+                        f"Expected (unordered): {expected_header}\n"
+                        f"Found: {current_header}"
                     )
             except StopIteration:
                 # empty file → write header
@@ -101,7 +117,9 @@ def ensure_param_file(pm: ProjectManager):
 
     return param_file
 
+
 def load_fitness_values(parameter_sets_file, generation_id):
+    """Load fitness values for a given generation."""
     fitness = []
     with open(parameter_sets_file, newline="") as f:
         reader = csv.DictReader(f)
@@ -114,27 +132,35 @@ def load_fitness_values(parameter_sets_file, generation_id):
     return fitness
 
 
+# -------------------- Main Optimization Loop --------------------
+
 def run_optimization_cycle(config_path_str):
+    """Main driver loop for running the DE optimization workflow."""
     config_path = Path(config_path_str).resolve()
 
     # Load ProjectManager
     pm = ProjectManager(config_path)
-
-    # Extract acronym
+    generator_type = pm.get_layout_generator_type()
+    optimizer_type = pm.get_optimizer_type()
     project_acronym = pm.config["project_acronym"]["value"]
+
+    logging.info(f"Starting optimization for project '{project_acronym}'")
+    logging.info(f"Layout generator: {generator_type}")
+    logging.info(f"Optimizer type: {optimizer_type}")
 
     # Ensure parameter_sets.csv exists
     param_file = ensure_param_file(pm)
 
     # Load optimizer
     optimizer = load_optimizer(
-        pm.get_optimizer_type(),
+        optimizer_type,
         {
             "bounds": pm.get_bounds_dict(),
             **pm.get_optimization_parameters(),
         },
     )
 
+    # Initialize FireWorks LaunchPad
     launchpad = LaunchPad.auto_load()
     generation_id = 0
 
@@ -142,12 +168,12 @@ def run_optimization_cycle(config_path_str):
         generation_str = f"{generation_id:03d}"
         logging.info(f">>> Generation {generation_id} started")
 
-        # Create new population folder
+        # Create population folder
         CreateNextPopulationFolderFiretask({"project_root": str(pm.root_dir)}).run_task({})
 
         # Suggest next generation parameter sets
         suggestions = optimizer.suggest()
-        logging.debug(f"Suggestions: {suggestions}")
+        logging.debug(f"Parameter suggestions for generation {generation_str}: {suggestions}")
 
         parameter_population = []
         for idx, p in enumerate(suggestions, start=1):
@@ -162,17 +188,22 @@ def run_optimization_cycle(config_path_str):
                 "parameters": param_dict,
             })
 
-        # Create workflow and add to LaunchPad
-        wf = get_optimize_generation_workflow(pm.root_dir, parameter_population, pm)
+        # Create workflow
+        wf = get_optimize_generation_workflow(
+            pm.root_dir,
+            parameter_population,
+            pm,
+            generator_type=generator_type  # explicitly pass generator name
+        )
         launchpad.add_wf(wf)
 
-        # Wait for generation completion
+        # Run until complete
         run_rapidfire_until_complete(launchpad, generation_str)
 
-        # Clean up launcher folders
+        # Cleanup FireWorks launcher folders
         cleanup_launcher_folders()
 
-        # Collect fitness values
+        # Gather fitness results
         fitness_values = load_fitness_values(param_file, generation_id)
         parameter_sets = pm.read_parameters_for_generation(generation_str)
 
@@ -190,11 +221,13 @@ def run_optimization_cycle(config_path_str):
             })
 
         optimizer.update(evaluated_population)
-
+        logging.info(f"Generation {generation_id} completed and optimizer updated.")
         generation_id += 1
 
-    logging.info(">>> Optimization finished.")
+    logging.info(">>> Optimization finished successfully.")
 
+
+# -------------------- CLI Entry Point --------------------
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
