@@ -72,7 +72,7 @@
 
     "physical_parameters": {
       "num_heliostats": {
-        "value": 250,
+        "value": 300,
         "type": "int"
       },
       "bubble_radius": {
@@ -95,21 +95,22 @@
       "min_tower_clearance": {
         "value": 5.0,
         "type": "float"
-      },
-      "north_only": {
-        "value": true,
-        "type": "bool"
       }
     },
 
     "layout_generation_parameters": {
       "beta_deg": {
-        "value": 180.0,
+        "value": 90.0,
         "type": "float"
       },
       "delta": {
         "value": 0.0,
         "type": "float"
+      },
+      "r_min": {
+        "bounds": [10.0, 30.0],
+        "type": "float",
+        "optimizable": true
       },
       "packing": {
         "bounds": [0.4, 0.9],
@@ -120,6 +121,18 @@
         "bounds": [0.0, 1.0],
         "type": "float",
         "optimizable": true
+      },
+      "radial_multiplier": {
+        "value": 1.0,
+        "type": "float"
+      },
+      "azimuth_multiplier": {
+        "value": 1.0,
+        "type": "float"
+      },
+      "split_threshold": {
+        "value": 2.0,
+        "type": "float"
       }
     },
 

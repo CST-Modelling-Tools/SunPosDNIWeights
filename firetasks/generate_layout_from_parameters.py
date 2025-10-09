@@ -9,22 +9,26 @@ from layout_generators.layout_generator_factory import get_layout_generator
 class GenerateLayoutFromParametersFiretask(FiretaskBase):
     """
     Firetask that generates a heliostat field layout from a set of parameters.
-    All parameters (optimizable + fixed) must be passed in `parameters`.
+
+    Compatible with structured parameter dictionaries as defined in project_config.json.
+    Supports generator types:
+        - biomimetic_spiral
+        - octagon_biomimetic_spiral
+        - radial_staggered
     """
 
     required_params = [
-        "generator_type",   # "biomimetic_spiral", "octagon_biomimetic_spiral", "radial_staggered"
+        "generator_type",   # e.g., "radial_staggered"
         "parameters",       # dict of parameters (optimizable + fixed)
-        "layout_file",      # full path for generated layout CSV (naming done in workflow)
+        "layout_file",      # full output CSV path
     ]
 
     def run_task(self, fw_spec):
         generator_type = self["generator_type"]
-        parameters = self._normalize_parameters(generator_type, self["parameters"])
-
+        parameters = self._normalize_parameters(self["parameters"])
         layout_file = Path(self["layout_file"]).resolve()
 
-        # Core required parameters
+        # Core parameters (must exist)
         try:
             num_heliostats = int(parameters["num_heliostats"])
             bubble_radius = float(parameters["bubble_radius"])
@@ -43,36 +47,35 @@ class GenerateLayoutFromParametersFiretask(FiretaskBase):
             parameters=parameters,
         )
 
-        # Generate layout CSV
+        # Generate layout
         try:
             generator.generate_layout(output_file=layout_file, parameters=parameters)
         except RuntimeError as e:
-            print(f"[WARNING] Skipping layout due to generation error: {e}")
+            print(f"[WARNING] Skipping layout generation for {generator_type} due to error: {e}")
             return FWAction()
 
         print(f"[INFO] Layout file generated: {layout_file}")
         return FWAction()
 
-    def _normalize_parameters(self, generator_type, parameters):
-        """
-        Ensure parameters are in dict form.
-        Legacy support for list inputs (still allowed by optimizers).
-        """
-        if isinstance(parameters, dict):
-            return parameters
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
 
-        elif isinstance(parameters, list):
-            if generator_type == "radial_staggered":
-                if len(parameters) != 4:
-                    raise ValueError("Expected 4 values for 'radial_staggered': [d0, alpha, a0, gamma]")
-                return {"d0": parameters[0], "alpha": parameters[1], "a0": parameters[2], "gamma": parameters[3]}
-            else:
-                if len(parameters) != 3:
-                    raise ValueError("Expected 3 values for spiral types: [a0, b, delta]")
-                return {"a0": parameters[0], "b": parameters[1], "delta": parameters[2]}
+    def _normalize_parameters(self, parameters):
+        """
+        Ensure parameters are a dict of concrete numeric values.
+        Converts numeric strings to floats where applicable.
+        """
+        if not isinstance(parameters, dict):
+            raise TypeError("Invalid format for 'parameters'; must be a dictionary.")
 
-        else:
-            raise TypeError("Invalid format for 'parameters'; must be dict or list.")
+        normalized = {}
+        for k, v in parameters.items():
+            try:
+                normalized[k] = float(v)
+            except (ValueError, TypeError):
+                normalized[k] = v  # Keep non-numeric entries as is (e.g., bools)
+        return normalized
 
     def _construct_generator(self, generator_type, num_heliostats, bubble_radius, receiver_height, parameters):
         """
@@ -96,11 +99,13 @@ class GenerateLayoutFromParametersFiretask(FiretaskBase):
                 num_heliostats=num_heliostats,
                 bubble_radius=bubble_radius,
                 receiver_height=receiver_height,
-                min_tower_clearance=float(parameters["min_tower_clearance"]),
-                north_only=bool(parameters["north_only"]),
+                min_tower_clearance=float(parameters.get("min_tower_clearance", 3.0)),
+                north_only=bool(parameters.get("north_only", False)),  # API compatibility
+                design_beta_deg=float(parameters.get("design_beta_deg", 25.0)),
+                kr=float(parameters.get("kr", 1.0)),
             )
 
-        else:  # biomimetic_spiral and others
+        else:  # biomimetic_spiral and other simpler generators
             return GeneratorClass(
                 num_heliostats=num_heliostats,
                 bubble_radius=bubble_radius,

@@ -24,8 +24,9 @@ class ComputeFitnessFiretask(FiretaskBase):
         "tonatiuh_script",
         "energy_exe",
         "directions_file",
-        "generator_type",
     ]
+
+    optional_params = ["generator_type", "project_acronym"]
 
     def run_task(self, fw_spec):
         project_root = Path(self["project_root"]).resolve()
@@ -40,20 +41,23 @@ class ComputeFitnessFiretask(FiretaskBase):
         fitness_file = Path(self["fitness_file"]).resolve()
 
         if not layout_file.exists():
-            print(f"[WARNING] Skipping fitness computation because layout file does not exist: {layout_file}")
+            print(f"[WARNING] Skipping fitness computation: layout file not found → {layout_file}")
             return FWAction()
 
         tn_exe = Path(self["tonatiuh_exe"]).resolve()
         tn_template_script = (project_root / self["tonatiuh_script"]).resolve()
         energy_exe = Path(self["energy_exe"]).resolve()
 
-        # relative paths (Tonatiuh++ expects paths relative to .tnhpps location)
+        # Relative paths (Tonatiuh++ expects relative to .tnhpps location)
         directions_file = (project_root / self["directions_file"]).resolve()
         rel_directions = os.path.relpath(directions_file, start=tnhpps_file.parent).replace("\\", "/")
         rel_layout = layout_file.relative_to(tnhpps_file.parent).as_posix()
         rel_efficiency = efficiency_file.relative_to(tnhpps_file.parent).as_posix()
 
-        # 🔹 Fill placeholders in Tonatiuh++ script template
+        # 🔹 Generate Tonatiuh++ script
+        if not tn_template_script.exists():
+            raise FileNotFoundError(f"Tonatiuh++ template script not found: {tn_template_script}")
+
         script_text = tn_template_script.read_text()
         script_text = (
             script_text
@@ -62,37 +66,60 @@ class ComputeFitnessFiretask(FiretaskBase):
             .replace("INPUT_DIRECTIONS_PATH_PLACEHOLDER", rel_directions)
         )
         tnhpps_file.write_text(script_text)
-        print(f"[INFO] Tonatiuh++ script written to: {tnhpps_file}")
+        print(f"[INFO] Tonatiuh++ input script created: {tnhpps_file}")
 
         # 🔹 Run Tonatiuh++
         try:
-            subprocess.run([str(tn_exe), "-i", str(tnhpps_file)],
-                           cwd=str(tnhpps_file.parent), check=True)
+            subprocess.run(
+                [str(tn_exe), "-i", str(tnhpps_file)],
+                cwd=str(tnhpps_file.parent),
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
         except subprocess.CalledProcessError as e:
-            print(f"[ERROR] Tonatiuh++ simulation failed for {candidate_tag}: {e}")
+            print(f"[ERROR] Tonatiuh++ simulation failed for {candidate_tag}")
+            print(e.stderr)
             return FWAction()
 
-        # 🔹 Run annual energy computation
+        # 🔹 Run Annual Energy computation
         try:
-            subprocess.run([str(energy_exe), str(efficiency_file), str(fitness_file)],
-                           cwd=str(project_root), check=True)
+            subprocess.run(
+                [str(energy_exe), str(efficiency_file), str(fitness_file)],
+                cwd=str(project_root),
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
         except subprocess.CalledProcessError as e:
-            print(f"[ERROR] AnnualEnergy computation failed for {candidate_tag}: {e}")
+            print(f"[ERROR] AnnualEnergy computation failed for {candidate_tag}")
+            print(e.stderr)
             return FWAction()
 
-        # 🔹 Parse fitness value
+        # 🔹 Validate fitness file
+        if not fitness_file.exists() or fitness_file.stat().st_size == 0:
+            raise FileNotFoundError(f"Fitness file missing or empty: {fitness_file}")
+
+        # 🔹 Parse fitness metric
         fitness_value = None
+        metric_name = None
         with open(fitness_file, "r") as f:
             for line in f:
                 if line.strip().startswith("average_optical_efficiency"):
+                    metric_name = "average_optical_efficiency"
                     try:
                         fitness_value = float(line.split(",")[1])
                     except (IndexError, ValueError):
                         raise ValueError(f"Invalid fitness line in {fitness_file}: {line.strip()}")
+
         if fitness_value is None:
             raise ValueError(f"No valid fitness metric found in {fitness_file}")
 
-        # 🔹 Append to parameter_sets.csv
+        print(f"[INFO] Candidate {candidate_tag} fitness ({metric_name}): {fitness_value:.6f}")
+
+        # 🔹 Append results to parameter_sets.csv
         pm = ProjectManager(project_root / "project_config.json")
         param_sets_file = project_root / "results" / "parameter_sets.csv"
         file_exists = param_sets_file.exists()
@@ -109,15 +136,16 @@ class ComputeFitnessFiretask(FiretaskBase):
                 )
                 writer.writerow(header)
 
-            # 🔹 Force values in exact header order
+            # Force consistent ordering
             param_values = []
             for k in ordered_param_keys:
                 if k not in parameters:
                     raise KeyError(f"[ERROR] Missing parameter '{k}' in candidate {candidate_tag}")
-                param_values.append(parameters[k])
+                val = parameters[k]
+                param_values.append(f"{float(val):.6f}" if isinstance(val, (float, int)) else str(val))
 
-            row = [generation_id, candidate_id, candidate_tag] + param_values + [fitness_value]
+            row = [generation_id, candidate_id, candidate_tag] + param_values + [f"{fitness_value:.6f}"]
             writer.writerow(row)
 
-        print(f"[INFO] Candidate {candidate_tag} fitness logged: {fitness_value:.4f}")
+        print(f"[INFO] Candidate {candidate_tag} fitness logged successfully.")
         return FWAction()
