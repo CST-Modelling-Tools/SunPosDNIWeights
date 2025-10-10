@@ -1,0 +1,17 @@
+,Pearson,Spearman
+generation_id,0.6652302618719987,0.707168423386467
+r_min,0.5631416888008667,0.4899003986780399
+packing,0.11250139298425647,0.15271306543388324
+candidate_id,-0.006514486195326597,-0.011333055729440888
+inner_bias,-0.013595127568136507,-0.022152589106083462
+receiver_height,-0.9308706959551748,-0.8014992131610496
+azimuth_multiplier,,
+beta_deg,,
+bubble_radius,,
+delta,,
+flat_receiver_radius,,
+flat_receiver_tilt,,
+min_tower_clearance,,
+num_heliostats,,
+radial_multiplier,,
+split_threshold,,

@@ -1,0 +1,161 @@
+{
+  "project_name": {
+    "value": "hyder_arizona_staggered_layout",
+    "type": "string"
+  },
+  "project_acronym": {
+    "value": "HASL",
+    "type": "string"
+  },
+  "location": {
+    "latitude": {
+      "value": 33.024436,
+      "type": "float"
+    },
+    "longitude": {
+      "value": -113.381777,
+      "type": "float"
+    }
+  },
+  "data": {
+    "dni_file": {
+      "value": "data/dni_hyder_arizona.csv",
+      "type": "string"
+    },
+    "directions_with_weights_file": {
+      "value": "data/directions_with_weights_hyder_arizona.csv",
+      "type": "string"
+    }
+  },
+  "executables": {
+    "sampling_exe": {
+      "value": "../build/tools/GenerateSamplingDirectionsAndWeights/Release/GenerateSamplingDirectionsAndWeights",
+      "type": "string"
+    },
+    "tonatiuh_exe": {
+      "value": "/home/mblanco/TonatiuhXX-Run/Tonatiuh++",
+      "type": "string"
+    },
+    "energy_exe": {
+      "value": "../build/apps/AnnualEnergy/AnnualEnergy",
+      "type": "string"
+    }
+  },
+  "scripts": {
+    "tonatiuh_script": {
+      "value": "scripts/radial_staggered_north_field.tnhpps",
+      "type": "string"
+    }
+  },
+  "folders": {
+    "results": {
+      "value": "results",
+      "type": "string"
+    }
+  },
+  "paths": {
+    "workflows_dir": {
+      "value": "../../workflows",
+      "type": "string"
+    }
+  },
+
+  "optimization_config": {
+    "type": {
+      "value": "differential_evolution",
+      "type": "string"
+    },
+    "layout_generator_type": {
+      "value": "radial_staggered",
+      "type": "string"
+    },
+
+    "physical_parameters": {
+      "num_heliostats": {
+        "value": 300,
+        "type": "int"
+      },
+      "bubble_radius": {
+        "value": 5.8,
+        "type": "float"
+      },
+      "receiver_height": {
+        "bounds": [30.0, 40.0],
+        "type": "float",
+        "optimizable": true
+      },
+      "flat_receiver_radius": {
+        "value": 0.865,
+        "type": "float"
+      },
+      "flat_receiver_tilt": {
+        "value": 0.0,
+        "type": "float"
+      },
+      "min_tower_clearance": {
+        "value": 5.0,
+        "type": "float"
+      }
+    },
+
+    "layout_generation_parameters": {
+      "beta_deg": {
+        "value": 90.0,
+        "type": "float"
+      },
+      "delta": {
+        "value": 0.0,
+        "type": "float"
+      },
+      "r_min": {
+        "bounds": [20.0, 30.0],
+        "type": "float",
+        "optimizable": true
+      },
+      "packing": {
+        "value": 0.85,
+        "type": "float",
+        "optimizable": false
+      },
+      "inner_bias": {
+        "value": 0.457551267,
+        "type": "float",
+        "optimizable": false
+      },
+      "radial_multiplier": {
+        "bounds": [0.92,1.18],
+        "type": "float",
+        "optimizable": true
+      },
+      "azimuth_multiplier": {
+        "bounds": [0.90, 1.15],
+        "type": "float",
+        "optimizable": true
+      },
+      "split_threshold": {
+        "bounds": [1.6,2.4],
+        "type": "float",
+        "optimizable": true
+      }
+    },
+
+    "optimization_parameters": {
+      "population_size": {
+        "value": 200,
+        "type": "int"
+      },
+      "max_generations": {
+        "value": 20,
+        "type": "int"
+      },
+      "mutation_factor": {
+        "value": 0.8,
+        "type": "float"
+      },
+      "crossover_rate": {
+        "value": 0.6,
+        "type": "float"
+      }
+    }
+  }
+}
