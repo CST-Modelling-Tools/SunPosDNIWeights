@@ -8,10 +8,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # ------------------------------------------------------------------------------------
 # Eigen3 detection
 # ------------------------------------------------------------------------------------
+# Try config/Module find first
 find_package(Eigen3 3.3 QUIET NO_MODULE)
 
 if (Eigen3_FOUND)
-    message(STATUS "Eigen3 found via find_package at: ${EIGEN_INCLUDE_DIR}")
+    message(STATUS "Eigen3 found via find_package().")
 else()
     message(STATUS "Eigen3 not found via find_package. Using manual path.")
 
@@ -38,7 +39,7 @@ else()
                             "Please verify the path points to the Eigen root directory.")
     endif()
 
-    # Create an imported target for consistency
+    # Create an imported target for consistency with find_package layout
     add_library(Eigen3::Eigen INTERFACE IMPORTED)
     set_target_properties(Eigen3::Eigen PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES "${EIGEN_INCLUDE_DIR}"
@@ -46,21 +47,36 @@ else()
 endif()
 
 # ------------------------------------------------------------------------------------
-# Silence Eigen's internal warnings (C++20+ enum conversions)
+# Make Eigen's headers visible to ALL targets (and mark as SYSTEM to hide Eigen warnings)
 # ------------------------------------------------------------------------------------
-
-# Treat Eigen includes as system headers — hides warnings from Eigen but keeps yours
+set(_eigen_inc "")
 if (TARGET Eigen3::Eigen)
     get_target_property(_eigen_inc Eigen3::Eigen INTERFACE_INCLUDE_DIRECTORIES)
-    if (_eigen_inc)
-        set_target_properties(Eigen3::Eigen PROPERTIES
-            INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_eigen_inc}"
-        )
-        message(STATUS "Eigen headers marked as SYSTEM to suppress internal warnings.")
-    endif()
 endif()
 
-# Fallback: explicitly suppress enum conversion warnings on modern compilers
+if (_eigen_inc)
+    # Add globally so even targets that don't link Eigen3::Eigen can include <Eigen/...>
+    include_directories(SYSTEM ${_eigen_inc})
+    message(STATUS "Eigen include dirs (global SYSTEM): ${_eigen_inc}")
+
+    # Also keep the SYSTEM marking on the interface target for consumers that _do_ link it
+    set_target_properties(Eigen3::Eigen PROPERTIES
+        INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_eigen_inc}"
+    )
+else()
+    message(FATAL_ERROR "Failed to determine Eigen include directories.")
+endif()
+
+# ------------------------------------------------------------------------------------
+# Project-wide include path for your public headers
+# (Optional if subtargets already do target_include_directories(... ../include))
+# ------------------------------------------------------------------------------------
+include_directories(${CMAKE_SOURCE_DIR}/include)
+message(STATUS "Project include dir added globally: ${CMAKE_SOURCE_DIR}/include")
+
+# ------------------------------------------------------------------------------------
+# Silence Eigen's internal warnings (C++20+ enum conversions)
+# ------------------------------------------------------------------------------------
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     add_compile_options(-Wno-deprecated-enum-enum-conversion)
 elseif (MSVC)
