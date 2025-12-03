@@ -80,14 +80,14 @@
         "type": "float"
       },
       "receiver_height": {
-        "bounds": [50.0, 120.00],
+        "value": 80.0,
         "type": "float",
-        "optimizable": true
+        "optimizable": false
       },
       "flat_receiver_radius": {
-        "bounds": [2.0, 16.0],
+        "value": 3.5,
         "type": "float",
-        "optimizable": true
+        "optimizable": false
       },
       "flat_receiver_tilt": {
         "value": 0.0,
@@ -142,11 +142,11 @@
 
     "optimization_parameters": {
       "population_size": {
-        "value": 100,
+        "value": 200,
         "type": "int"
       },
       "max_generations": {
-        "value": 20,
+        "value": 10,
         "type": "int"
       },
       "mutation_factor": {
